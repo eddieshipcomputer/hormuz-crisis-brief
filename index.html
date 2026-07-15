@@ -3,619 +3,832 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hormuz Crisis — Oil Flow Intelligence · July 2026</title>
+<title>Hormuz Crisis — Intelligence Dashboard · July 2026</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg: #06080f;
-  --bg-card: rgba(13, 17, 28, 0.6);
-  --border: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(255, 255, 255, 0.12);
-  --text: #e4e8f0;
-  --text-dim: #6b7a90;
-  --text-faint: #3a4658;
-  --red: #ff4d6a;
-  --red-glow: rgba(255, 77, 106, 0.15);
-  --amber: #ffb547;
-  --blue: #4dabf7;
-  --green: #2dd4a8;
-  --purple: #a78bfa;
+  --bg: #0a0c14;
+  --bg-sidebar: #0d1018;
+  --bg-card: #11141e;
+  --bg-card-hover: #141826;
+  --bg-inset: #070910;
+  --border: rgba(255,255,255,0.05);
+  --border-active: rgba(255,255,255,0.1);
+  --text: #c8d0dc;
+  --text-bright: #e8ecf2;
+  --text-dim: #5a6577;
+  --text-faint: #363d4d;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --blue: #3b82f6;
+  --green: #10b981;
+  --purple: #8b5cf6;
+  --sidebar-w: 240px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-
 html { scroll-behavior: smooth; }
 
 body {
   font-family: 'Inter', -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.6;
-  overflow-x: hidden;
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Ambient gradient mesh background */
-body::before {
-  content: '';
-  position: fixed; inset: 0; z-index: -1;
-  background:
-    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(255, 77, 106, 0.08), transparent),
-    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(77, 171, 247, 0.06), transparent),
-    radial-gradient(ellipse 70% 40% at 50% 100%, rgba(167, 139, 250, 0.05), transparent);
-  pointer-events: none;
+/* ── SIDEBAR ── */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-w);
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  z-index: 100;
+  overflow-y: auto;
+  display: flex; flex-direction: column;
 }
-
-/* Noise overlay */
-body::after {
-  content: '';
-  position: fixed; inset: 0; z-index: -1;
-  opacity: 0.015;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  pointer-events: none;
-}
-
-.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-
-/* ── NAV ── */
-nav {
-  position: sticky; top: 0; z-index: 50;
-  backdrop-filter: blur(20px) saturate(1.5);
-  background: rgba(6, 8, 15, 0.7);
+.sidebar-brand {
+  padding: 20px 22px 16px;
   border-bottom: 1px solid var(--border);
-  padding: 14px 0;
+  display: flex; align-items: center; gap: 10px;
 }
-nav .wrap { display: flex; align-items: center; justify-content: space-between; }
-nav .brand { font-weight: 800; font-size: 15px; letter-spacing: -0.02em; }
-nav .brand .dot { display: inline-block; width: 8px; height: 8px; background: var(--red); border-radius: 50%; margin-right: 8px; box-shadow: 0 0 12px var(--red); animation: pulse-dot 2s ease-in-out infinite; }
-@keyframes pulse-dot { 50% { opacity: 0.5; } }
-nav .meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); }
-nav .meta span { color: var(--text-dim); }
-nav .links { display: flex; gap: 20px; }
-nav .links a { color: var(--text-dim); text-decoration: none; font-size: 13px; font-weight: 500; transition: color 0.2s; }
-nav .links a:hover { color: var(--text); }
+.sidebar-brand .dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--red);
+  box-shadow: 0 0 8px var(--red);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: 0.4; } }
+.sidebar-brand .name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: var(--text-bright); }
+.sidebar-brand .sub { font-size: 10px; color: var(--text-faint); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; }
 
-/* ── HERO ── */
-.hero { padding: 80px 0 40px; }
-.hero .tag {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--red-glow); border: 1px solid rgba(255, 77, 106, 0.2);
-  color: var(--red); padding: 5px 12px; border-radius: 100px;
-  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500;
-  letter-spacing: 0.03em; margin-bottom: 24px;
+.sidebar-section { padding: 16px 0 8px; }
+.sidebar-section .label {
+  padding: 0 22px 8px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--text-faint); font-weight: 600;
 }
-.hero .tag .live { width: 6px; height: 6px; background: var(--red); border-radius: 50%; animation: pulse-dot 1.5s ease-in-out infinite; }
-.hero h1 {
-  font-size: clamp(36px, 6vw, 64px); font-weight: 800;
-  letter-spacing: -0.03em; line-height: 1.05; margin-bottom: 20px;
-  background: linear-gradient(135deg, #fff 0%, #a0aec0 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+.sidebar-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 22px;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 13px; font-weight: 500;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
 }
-.hero h1 .accent { background: linear-gradient(135deg, var(--red) 0%, var(--amber) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.hero .sub { font-size: 18px; color: var(--text-dim); max-width: 580px; line-height: 1.5; font-weight: 400; }
-.hero .stats { display: flex; gap: 32px; margin-top: 36px; flex-wrap: wrap; }
-.hero .stat { }
-.hero .stat .num { font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
-.hero .stat .num.red { color: var(--red); }
-.hero .stat .num.amber { color: var(--amber); }
-.hero .stat .num.blue { color: var(--blue); }
-.hero .stat .num.green { color: var(--green); }
-.hero .stat .lbl { font-size: 12px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+.sidebar-item:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+.sidebar-item.active { color: var(--text-bright); border-left-color: var(--red); background: rgba(239,68,68,0.04); }
+.sidebar-item .icon { width: 16px; text-align: center; font-size: 14px; }
 
-/* ── GLOBE SECTION ── */
-.globe-section {
-  margin: 40px 0;
-  border-radius: 20px;
-  overflow: hidden;
+.sidebar-bottom {
+  margin-top: auto;
+  padding: 16px 22px;
+  border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text-faint);
+  font-family: 'JetBrains Mono', monospace;
+}
+.sidebar-bottom .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+
+/* ── MAIN ── */
+.main {
+  margin-left: var(--sidebar-w);
+  min-height: 100vh;
+}
+
+/* Top bar */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(10,12,20,0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.topbar .breadcrumb {
+  font-size: 13px; color: var(--text-dim);
+}
+.topbar .breadcrumb span { color: var(--text); }
+.topbar .actions { display: flex; align-items: center; gap: 16px; }
+.topbar .pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
   border: 1px solid var(--border);
-  position: relative;
-  background: #03050c;
-  height: 560px;
+  color: var(--text-dim);
 }
-.globe-section iframe { width: 100%; height: 100%; border: none; }
-.globe-section .badge {
-  position: absolute; top: 16px; left: 20px; z-index: 10;
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
-  background: rgba(6, 8, 15, 0.6); backdrop-filter: blur(8px);
-  padding: 5px 12px; border-radius: 100px; border: 1px solid var(--border);
+.topbar .pill.live {
+  color: var(--red); border-color: rgba(239,68,68,0.2);
+  background: rgba(239,68,68,0.05);
 }
+.topbar .pill .d { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--red); margin-right: 5px; animation: pulse 1.5s infinite; }
 
-/* ── BENTO GRID ── */
-.bento {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 16px;
-  margin: 40px 0;
+/* Content */
+.content { padding: 24px 28px 60px; }
+
+/* Section heading */
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 28px 0 16px;
 }
+.section-head h2 {
+  font-size: 16px; font-weight: 600; color: var(--text-bright);
+  display: flex; align-items: center; gap: 8px;
+}
+.section-head h2 .num {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-faint); font-weight: 400;
+}
+.section-head .meta { font-size: 12px; color: var(--text-faint); }
+
+/* Stat cards row */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  transition: border-color 0.2s;
+}
+.stat-card:hover { border-color: var(--border-active); }
+.stat-card .label {
+  font-size: 11px; color: var(--text-dim); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.stat-card .label .dot { width: 6px; height: 6px; border-radius: 50%; }
+.stat-card .value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px; font-weight: 700; color: var(--text-bright);
+  letter-spacing: -0.02em;
+}
+.stat-card .change {
+  font-size: 12px; margin-top: 6px;
+  display: flex; align-items: center; gap: 4px;
+}
+.stat-card .change.up { color: var(--green); }
+.stat-card .change.down { color: var(--red); }
+.stat-card .change.neutral { color: var(--text-dim); }
+
+/* Grid layout */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+
+/* Card */
 .card {
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 28px;
-  transition: border-color 0.3s, transform 0.3s;
+  border-radius: 10px;
+  overflow: hidden;
 }
-.card:hover { border-color: var(--border-hover); }
+.card-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-header h3 {
+  font-size: 14px; font-weight: 600; color: var(--text-bright);
+}
+.card-header .badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  padding: 3px 8px; border-radius: 4px;
+  border: 1px solid var(--border); color: var(--text-dim);
+}
+.card-body { padding: 20px; }
+.card-body p { color: var(--text); font-size: 13px; line-height: 1.7; margin-bottom: 10px; }
+.card-body p:last-child { margin-bottom: 0; }
+.card-body strong { color: var(--text-bright); font-weight: 600; }
+.card-body .hl-red { color: var(--red); font-weight: 600; }
+.card-body .hl-amber { color: var(--amber); font-weight: 600; }
+.card-body .hl-green { color: var(--green); font-weight: 600; }
+.card-body .hl-blue { color: var(--blue); font-weight: 600; }
 
-.card-label {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+/* Table */
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left; padding: 10px 16px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-dim); font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 12px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+
+/* Status badge */
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-weight: 500; font-family: 'JetBrains Mono', monospace;
+}
+.tag.red { background: rgba(239,68,68,0.1); color: var(--red); }
+.tag.amber { background: rgba(245,158,11,0.1); color: var(--amber); }
+.tag.green { background: rgba(16,185,129,0.1); color: var(--green); }
+.tag.blue { background: rgba(59,130,246,0.1); color: var(--blue); }
+.tag.purple { background: rgba(139,92,246,0.1); color: var(--purple); }
+.tag.grey { background: rgba(255,255,255,0.04); color: var(--text-dim); }
+
+/* Progress bar */
+.bar-wrap { height: 4px; background: rgba(255,255,255,0.04); border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 2px; }
+
+/* Chart placeholder */
+.chart-frame {
+  border-radius: 8px; overflow: hidden;
+  background: var(--bg-inset); border: 1px solid var(--border);
+}
+.chart-frame img { width: 100%; display: block; }
+.chart-cap { font-size: 10px; color: var(--text-faint); padding: 6px 12px; font-family: 'JetBrains Mono', monospace; }
+
+/* Globe container */
+.globe-card {
+  background: #03050c;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  height: 500px;
+  position: relative;
+}
+.globe-card iframe { width: 100%; height: 100%; border: none; }
+.globe-card .overlay {
+  position: absolute; top: 14px; left: 16px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
   color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
-  margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
 }
-.card-label .icon { font-size: 14px; }
-.card-label .marker { width: 6px; height: 6px; border-radius: 50%; }
 
-.card h3 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 8px; }
-.card p { color: var(--text-dim); font-size: 14px; line-height: 1.65; }
-.card p strong { color: var(--text); font-weight: 600; }
-.card p .hl { color: var(--red); font-weight: 600; }
-.card p .hl-amber { color: var(--amber); font-weight: 600; }
-.card p .hl-green { color: var(--green); font-weight: 600; }
-
-/* Bento spans */
-.col-4 { grid-column: span 4; }
-.col-6 { grid-column: span 6; }
-.col-8 { grid-column: span 8; }
-.col-12 { grid-column: span 12; }
-
-/* Big number cards */
-.big-num {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 48px; font-weight: 700; letter-spacing: -0.03em;
-  line-height: 1; margin: 8px 0;
+/* Alert */
+.alert {
+  border-radius: 8px; padding: 14px 16px; margin: 12px 0;
+  border: 1px solid;
+  font-size: 13px;
 }
-.big-num.red { color: var(--red); }
-.big-num.amber { color: var(--amber); }
-.big-num.blue { color: var(--blue); }
-.big-num.green { color: var(--green); }
-
-.chart-box {
-  margin: 16px 0; border-radius: 10px; overflow: hidden;
-  background: rgba(0,0,0,0.2); border: 1px solid var(--border);
-}
-.chart-box img { width: 100%; display: block; }
-.chart-caption { font-size: 11px; color: var(--text-faint); padding: 8px 14px; font-family: 'JetBrains Mono', monospace; }
-
-/* Alert box */
-.alert-box {
-  background: linear-gradient(135deg, rgba(255, 77, 106, 0.08) 0%, rgba(255, 181, 71, 0.05) 100%);
-  border: 1px solid rgba(255, 77, 106, 0.15);
-  border-radius: 12px; padding: 20px 24px; margin: 16px 0;
-}
-.alert-box .title {
-  color: var(--red); font-weight: 600; font-size: 13px;
-  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;
-  display: flex; align-items: center; gap: 6px;
-}
+.alert-red { background: rgba(239,68,68,0.05); border-color: rgba(239,68,68,0.12); }
+.alert-amber { background: rgba(245,158,11,0.05); border-color: rgba(245,158,11,0.12); }
+.alert-green { background: rgba(16,185,129,0.05); border-color: rgba(16,185,129,0.12); }
+.alert .title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.alert-red .title { color: var(--red); }
+.alert-amber .title { color: var(--amber); }
+.alert-green .title { color: var(--green); }
+.alert p { margin: 0; font-size: 13px; }
 
 /* Quote */
-blockquote {
+.quote {
   border-left: 2px solid var(--purple);
-  padding: 12px 20px; margin: 16px 0;
-  font-style: italic; color: var(--text-dim);
-  font-size: 14px; line-height: 1.7;
+  padding: 10px 16px; margin: 12px 0;
+  font-size: 13px; font-style: italic; color: var(--text-dim);
 }
-blockquote .attr { font-style: normal; font-size: 12px; color: var(--text-faint); margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
+.quote .attr { font-style: normal; font-size: 11px; color: var(--text-faint); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
 
-/* Price grid */
-.price-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+/* Price cells */
+.price-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px 0; }
 .price-cell {
-  background: rgba(0,0,0,0.2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 16px; text-align: center;
+  background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; text-align: center;
 }
-.price-cell .p { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; }
-.price-cell .l { font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+.price-cell .v { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; color: var(--text-bright); }
+.price-cell .l { font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
 
-/* Route list */
-.route-list { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
-.route-item {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 14px; background: rgba(0,0,0,0.15);
-  border-radius: 8px; border: 1px solid var(--border);
+/* Sources */
+.sources {
+  font-size: 11px; color: var(--text-faint); font-family: 'JetBrains Mono', monospace;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px 16px;
 }
-.route-item .bar { height: 4px; border-radius: 2px; flex-shrink: 0; }
-.route-item .info { flex: 1; }
-.route-item .name { font-size: 13px; font-weight: 500; }
-.route-item .detail { font-size: 11px; color: var(--text-faint); font-family: 'JetBrains Mono', monospace; }
-.route-item .flow { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 14px; }
-
-/* Pipeline util bar */
-.util-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; margin: 6px 0; }
-.util-bar .fill { height: 100%; border-radius: 3px; }
 
 /* Footer */
-footer {
-  padding: 60px 0 40px; text-align: center;
-  border-top: 1px solid var(--border); margin-top: 40px;
-}
-footer .brand { font-weight: 800; font-size: 14px; margin-bottom: 8px; }
-footer p { color: var(--text-faint); font-size: 12px; line-height: 1.8; }
-footer .sources {
-  text-align: left; max-width: 800px; margin: 30px auto;
-  font-size: 11px; color: var(--text-faint); font-family: 'JetBrains Mono', monospace;
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 20px;
+.footer {
+  margin-left: var(--sidebar-w);
+  padding: 24px 28px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 12px; color: var(--text-faint);
 }
 
-/* Responsive */
+/* Mobile */
+@media (max-width: 1024px) {
+  .grid-2, .grid-3, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+  .stat-row { grid-template-columns: repeat(2, 1fr); }
+}
 @media (max-width: 768px) {
-  .col-4, .col-6, .col-8 { grid-column: span 12; }
+  :root { --sidebar-w: 0px; }
+  .sidebar { display: none; }
+  .main { margin-left: 0; }
+  .footer { margin-left: 0; }
   .price-grid { grid-template-columns: repeat(2, 1fr); }
-  .hero { padding: 50px 0 30px; }
-  nav .links { display: none; }
-  footer .sources { grid-template-columns: 1fr; }
+  .stat-row { grid-template-columns: 1fr; }
+  .sources { grid-template-columns: 1fr; }
+  .content { padding: 16px; }
 }
 
-/* Fade-in animation */
-@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.fade-in { animation: fadeUp 0.6s ease-out backwards; }
-.fade-in:nth-child(1) { animation-delay: 0s; }
-.fade-in:nth-child(2) { animation-delay: 0.1s; }
-.fade-in:nth-child(3) { animation-delay: 0.2s; }
-.fade-in:nth-child(4) { animation-delay: 0.3s; }
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 </style>
 </head>
 <body>
 
-<!-- NAV -->
-<nav>
-  <div class="wrap">
-    <div class="brand"><span class="dot"></span>HORMUZ<span style="color:var(--text-faint);font-weight:400;margin-left:6px;">// INTEL</span></div>
-    <div class="links">
-      <a href="#flow">Flow</a>
-      <a href="#reserves">Reserves</a>
-      <a href="#pipelines">Pipelines</a>
-      <a href="#threats">Threats</a>
-      <a href="#opposing">Opposing Views</a>
-    </div>
-    <div class="meta"><span>UPDATED</span> JUL 15 2026</div>
-  </div>
-</nav>
-
-<!-- HERO -->
-<section class="hero">
-  <div class="wrap">
-    <div class="tag fade-in"><span class="live"></span>OSINT BRIEF · ACTIVE SITUATION</div>
-    <h1 class="fade-in">The world's oil safety net<br>is <span class="accent">effectively gone.</span></h1>
-    <p class="sub fade-in">The 2026 Iran War triggered the largest oil supply disruption in history. Hormuz throughput is still 40% below pre-war levels. Global reserves burned through 1 billion barrels. Here's what's left.</p>
-    <div class="stats fade-in">
-      <div class="stat"><div class="num red">8.5M</div><div class="lbl">bpd via Hormuz</div></div>
-      <div class="stat"><div class="num amber">320M</div><div class="lbl">US SPR (43yr low)</div></div>
-      <div class="stat"><div class="num blue">$86</div><div class="lbl">Brent / bbl</div></div>
-      <div class="stat"><div class="num green">1.2B</div><div class="lbl">Global reserves left</div></div>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="dot"></div>
+    <div>
+      <div class="name">HORMUZ</div>
+      <div class="sub">INTEL // 2026</div>
     </div>
   </div>
-</section>
 
-<!-- GLOBE -->
-<div class="wrap">
-  <div class="globe-section">
-    <div class="badge">// LIVE FLOW MAP</div>
-    <iframe id="globe-frame" src="globe.html" loading="lazy" title="3D Globe — Global Oil Flow"></iframe>
-    <script>document.getElementById('globe-frame').src = 'globe.html?v=' + Date.now();</script>
+  <div class="sidebar-section">
+    <div class="label">Overview</div>
+    <a href="#dashboard" class="sidebar-item active"><span class="icon">▦</span> Dashboard</a>
+    <a href="#flow" class="sidebar-item"><span class="icon">→</span> Flow Analysis</a>
+    <a href="#globe" class="sidebar-item"><span class="icon">◐</span> Live Globe Map</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="label">Intelligence</div>
+    <a href="#reserves" class="sidebar-item"><span class="icon">♠</span> Reserves</a>
+    <a href="#pipelines" class="sidebar-item"><span class="icon">≡</span> Pipelines</a>
+    <a href="#threats" class="sidebar-item"><span class="icon">⚠</span> Threat Matrix</a>
+    <a href="#price" class="sidebar-item"><span class="icon">$</span> Price Outlook</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="label">Opposing Views</div>
+    <a href="#insider" class="sidebar-item"><span class="icon">⚡</span> $7B Question</a>
+    <a href="#profits" class="sidebar-item"><span class="icon">$</span> Follow the Money</a>
+    <a href="#doctrine" class="sidebar-item"><span class="icon">◈</span> Chokepoint Theory</a>
+    <a href="#china" class="sidebar-item"><span class="icon">█</span> China Black Box</a>
+    <a href="#crypto" class="sidebar-item"><span class="icon">₿</span> Bitcoin Angle</a>
+    <a href="#ev" class="sidebar-item"><span class="icon">⚡</span> EV Tipping Point</a>
+    <a href="#troll" class="sidebar-item"><span class="icon">⚑</span> The Troll Toll</a>
+  </div>
+
+  <div class="sidebar-bottom">
+    <div class="row"><span>Report ID</span><span>HORMUZ-0715</span></div>
+    <div class="row"><span>Updated</span><span>JUL 15 2026</span></div>
+    <div class="row"><span>Class</span><span>OSINT</span></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="breadcrumb">Intelligence Brief / <span>Hormuz Oil Crisis</span></div>
+  <div class="actions">
+    <div class="pill live"><span class="d"></span> ACTIVE SITUATION</div>
+    <div class="pill">UNCLASSIFIED // OSINT</div>
   </div>
 </div>
 
-<!-- BENTO GRID -->
-<div class="wrap">
-<div class="bento">
+<div class="content">
 
-  <!-- EXEC SUMMARY -->
-  <div class="card col-8 fade-in" id="flow">
-    <div class="card-label"><span class="marker" style="background:var(--red)"></span>01 · EXECUTIVE SUMMARY</div>
-    <h3>The disruption exceeded 1 billion barrels.</h3>
-    <p style="margin-bottom:12px;">Before the war, <strong>20-21M bpd</strong> transited Hormuz — 20% of global consumption. During peak crisis (Mar–May), tanker traffic dropped to <span class="hl">1.2M bpd</span>. Iran boarded vessels, laid sea mines, and the IRGC formally closed the strait on March 27.</p>
-    <p style="margin-bottom:12px;">Post-ceasefire recovery has restored ~<strong>15M bpd</strong> regional total (8.5M tanker + 6.5M pipeline). But that 15M figure conflates two different things — tanker traffic through Hormuz is still <span class="hl">less than half</span> pre-war levels. The backlog of ~17M barrels of pre-war Saudi oil still clearing inflates apparent recovery.</p>
-    <p>The IMF warned July 15: global buffers halved to ~1.2B barrels. At current disruption rates, <span class="hl-amber">exhausted by early 2027</span>.</p>
-    <div class="alert-box">
-      <div class="title">⚠ CRITICAL</div>
-      <p style="margin:0;font-size:13px;">The reserve cushion that absorbed the initial shock <strong>no longer exists</strong>. Any renewed Hormuz closure will translate directly into price — with no institutional buffer.</p>
+<!-- ═══ DASHBOARD ═══ -->
+<div id="dashboard"></div>
+
+<div class="section-head" id="flow">
+  <h2>Executive Summary <span class="num">/ 01</span></h2>
+  <div class="meta">Largest supply disruption in oil market history — IEA</div>
+</div>
+
+<!-- STAT CARDS -->
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="label"><span class="dot" style="background:var(--red)"></span>HORMUZ FLOW</div>
+    <div class="value" style="color:var(--red);">8.5M</div>
+    <div class="change down">▼ 59% vs pre-war (20.5M bpd)</div>
+  </div>
+  <div class="stat-card">
+    <div class="label"><span class="dot" style="background:var(--amber)"></span>US SPR</div>
+    <div class="value" style="color:var(--amber);">319.5M</div>
+    <div class="change down">▼ Lowest since April 1983</div>
+  </div>
+  <div class="stat-card">
+    <div class="label"><span class="dot" style="background:var(--blue)"></span>BRENT</div>
+    <div class="value" style="color:var(--blue);">$86</div>
+    <div class="change neutral">→ /bbl · Jul 15</div>
+  </div>
+  <div class="stat-card">
+    <div class="label"><span class="dot" style="background:var(--green)"></span>GLOBAL RESERVES</div>
+    <div class="value" style="color:var(--green);">1.2B</div>
+    <div class="change down">▼ Halved since Feb 2026</div>
+  </div>
+</div>
+
+<!-- SUMMARY + METRICS -->
+<div class="grid-2-1">
+  <div class="card">
+    <div class="card-header"><h3>Situation Report</h3><span class="badge">JUL 15 2026</span></div>
+    <div class="card-body">
+      <p>Before the war, <strong>20-21M bpd</strong> transited Hormuz — 20% of global consumption. During peak crisis (Mar–May), tanker traffic dropped to <span class="hl-red">1.2M bpd</span>. Iran boarded vessels, laid sea mines, and the IRGC formally closed the strait on March 27.</p>
+      <p>Post-ceasefire recovery has restored ~<strong>15M bpd</strong> regional total (8.5M tanker + 6.5M pipeline). But that 15M figure conflates two things — tanker traffic through Hormuz is still <span class="hl-red">less than half</span> pre-war levels. A backlog of ~17M barrels of pre-war Saudi oil still clearing inflates apparent recovery.</p>
+      <p>The IMF warned July 15: global buffers halved to ~1.2B barrels. At current disruption rates, <span class="hl-amber">exhausted by early 2027</span>.</p>
+      <div class="alert alert-red">
+        <div class="title">⚠ CRITICAL</div>
+        <p>The reserve cushion that absorbed the initial shock <strong>no longer exists</strong>. Any renewed Hormuz closure will translate directly into price — with no institutional buffer.</p>
+      </div>
     </div>
   </div>
 
-  <!-- KEY NUMBERS -->
-  <div class="card col-4 fade-in">
-    <div class="card-label"><span class="marker" style="background:var(--amber)"></span>KEY METRICS</div>
-    <div class="big-num red">$126</div>
-    <p style="font-size:12px;color:var(--text-faint);margin-bottom:16px;">Peak Brent · Mar 8 2026</p>
-    <div class="big-num amber">-91M</div>
-    <p style="font-size:12px;color:var(--text-faint);margin-bottom:16px;">SPR barrels released</p>
-    <div class="big-num blue">35%</div>
-    <p style="font-size:12px;color:var(--text-faint);margin-bottom:16px;">Below pre-war aggregate flow</p>
-    <div class="big-num green">10.3M</div>
-    <p style="font-size:12px;color:var(--text-faint);">Max pipeline bypass (if fully built)</p>
-  </div>
-
-  <!-- HORMUZ FLOW -->
-  <div class="card col-6 fade-in">
-    <div class="card-label"><span class="marker" style="background:var(--red)"></span>02 · HORMUZ THROUGHPUT</div>
-    <h3>Still 40% below pre-war.</h3>
-    <div class="chart-box">
-      <img src="charts/chart1_hormuz_flows.png" alt="Hormuz Flow Chart">
-      <div class="chart-caption">fig 1 · tanker vs pipeline flow</div>
+  <div class="card">
+    <div class="card-header"><h3>Key Metrics</h3></div>
+    <div class="card-body" style="padding:16px;">
+    <table>
+      <tr><td style="border:none;padding:8px 0;color:var(--text-dim);font-size:12px;">Peak Brent</td><td style="border:none;text-align:right;padding:8px 0;"><span class="tag red">$126</span></td></tr>
+      <tr><td style="border:none;padding:8px 0;color:var(--text-dim);font-size:12px;">SPR Released</td><td style="border:none;text-align:right;padding:8px 0;"><span class="tag amber">~93M bbl</span></td></tr>
+      <tr><td style="border:none;padding:8px 0;color:var(--text-dim);font-size:12px;">Below Pre-War</td><td style="border:none;text-align:right;padding:8px 0;"><span class="tag blue">35%</span></td></tr>
+      <tr><td style="border:none;padding:8px 0;color:var(--text-dim);font-size:12px;">Max Pipeline</td><td style="border:none;text-align:right;padding:8px 0;"><span class="tag green">10.3M bpd</span></td></tr>
+      <tr><td style="border:none;padding:8px 0;color:var(--text-dim);font-size:12px;">IEA Release</td><td style="border:none;text-align:right;padding:8px 0;"><span class="tag grey">400M bbl</span></td></tr>
+      <tr><td style="border:none;padding:8px 0;color:var(--text-dim);font-size:12px;">Global Drawdown</td><td style="border:none;text-align:right;padding:8px 0;"><span class="tag red">~1B bbl</span></td></tr>
+    </table>
     </div>
-    <p>Pre-war: <strong>20.5M bpd</strong> through Hormuz. Peak crisis: <span class="hl">1.2M bpd</span>. Now: <strong>8.5M bpd</strong> tanker + <strong>6.5M</strong> pipeline = 15M regional. Pipeline bypass surged to 4.5M during crisis but couldn't offset the volume.</p>
   </div>
+</div>
 
-  <!-- RESERVES -->
-  <div class="card col-6 fade-in" id="reserves">
-    <div class="card-label"><span class="marker" style="background:var(--amber)"></span>03 · STRATEGIC RESERVES</div>
-    <h3>The spent buffer.</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0;">
-      <div>
-        <div class="chart-box">
+<!-- ═══ GLOBE ═══ -->
+<div class="section-head" id="globe">
+  <h2>Live Flow Map <span class="num">/ 02</span></h2>
+  <div class="meta">Real-time visualization · tanker routes vs pipelines vs threat zones</div>
+</div>
+<div class="globe-card">
+  <div class="overlay">// HORMUZ_FLOW_MAP_v2</div>
+  <iframe id="globe-frame" src="globe.html" loading="lazy" title="3D Globe — Global Oil Flow"></iframe>
+  <script>document.getElementById('globe-frame').src = 'globe.html?v=' + Date.now();</script>
+</div>
+
+<!-- ═══ HORMUZ THROUGHPUT + RESERVES ═══ -->
+<div class="section-head" id="reserves">
+  <h2>Throughput &amp; Reserves <span class="num">/ 03</span></h2>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><h3>Hormuz Throughput</h3><span class="badge">STILL -40%</span></div>
+    <div class="card-body">
+      <div class="chart-frame">
+        <img src="charts/chart1_hormuz_flows.png" alt="Hormuz Flow Chart">
+        <div class="chart-cap">fig 1 · tanker vs pipeline flow</div>
+      </div>
+      <p style="margin-top:12px;">Pre-war: <strong>20.5M bpd</strong>. Peak crisis: <span class="hl-red">1.2M bpd</span>. Now: <strong>8.5M bpd</strong> tanker + <strong>6.5M</strong> pipeline = 15M regional.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Strategic Reserves — The Spent Buffer</h3><span class="badge">43-YR LOW</span></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div class="chart-frame">
           <img src="charts/chart2_spr_drawdown.png" alt="SPR Drawdown">
-          <div class="chart-caption">fig 2a · US SPR · lowest since 1983</div>
+          <div class="chart-cap">fig 2a · US SPR</div>
         </div>
-      </div>
-      <div>
-        <div class="chart-box">
+        <div class="chart-frame">
           <img src="charts/chart3_global_reserves.png" alt="Global Reserves">
-          <div class="chart-caption">fig 2b · IEA global reserves halved</div>
+          <div class="chart-cap">fig 2b · Global reserves</div>
         </div>
       </div>
-    </div>
-    <p>US SPR: <strong>319.5M bbl</strong> — lowest since April 1983. Drawn down ~<span class="hl">91-95M bbl</span> during the crisis. IEA coordinated release: <strong>400M bbl</strong>. Total global drawdown: <span class="hl">~1 billion barrels</span>.</p>
-    <blockquote>
-      "That cushion has been spent. If the disruption persists at current rates, that lower bound would be reached by early 2027. Well before that point, prices would likely move sharply higher."
-      <div class="attr">— IMF, July 15 2026</div>
-    </blockquote>
-  </div>
-
-  <!-- PIPELINES -->
-  <div class="card col-6 fade-in" id="pipelines">
-    <div class="card-label"><span class="marker" style="background:var(--blue)"></span>04 · PIPELINE BYPASS</div>
-    <h3>Physics moves slower than geopolitics.</h3>
-    <div class="route-list">
-      <div class="route-item">
-        <div class="bar" style="width:36%;background:var(--blue);"></div>
-        <div class="info">
-          <div class="name">Saudi Petroline (East-West)</div>
-          <div class="detail">1,200km twin-pipe · 1980s vintage</div>
-        </div>
-        <div class="flow" style="color:var(--blue);">2.5M / 7M</div>
+      <p>US SPR: <strong>319.5M bbl</strong> — lowest since April 1983. Total global drawdown: <span class="hl-red">~1 billion barrels</span>.</p>
+      <div class="quote">
+        "That cushion has been spent. If the disruption persists at current rates, that lower bound would be reached by early 2027."
+        <div class="attr">— IMF, July 15 2026</div>
       </div>
-      <div class="route-item">
-        <div class="bar" style="width:83%;background:var(--green);"></div>
-        <div class="info">
-          <div class="name">UAE ADCOP (Habshan-Fujairah)</div>
-          <div class="detail">Bypasses Hormuz entirely</div>
-        </div>
-        <div class="flow" style="color:var(--green);">1.5M / 1.8M</div>
-      </div>
-      <div class="route-item">
-        <div class="bar" style="width:50%;background:var(--purple);opacity:0.4;"></div>
-        <div class="info">
-          <div class="name">ADNOC West-East 1</div>
-          <div class="detail">Under construction · ETA 2027</div>
-        </div>
-        <div class="flow" style="color:var(--purple);">0 / 1.5M</div>
-      </div>
-    </div>
-    <p>Combined bypass: <strong>4.3M bpd</strong>. Even at full build-out (10.3M), covers only ~half of pre-war Hormuz volumes. <span class="hl">Hormuz remains irreplaceable.</span></p>
-    <p style="font-size:12px;color:var(--text-faint);margin-top:8px;">Trucking assessed as negligible — region lacks road infrastructure for meaningful oil movement by land.</p>
-  </div>
-
-  <!-- THREATS -->
-  <div class="card col-6 fade-in" id="threats">
-    <div class="card-label"><span class="marker" style="background:var(--amber)"></span>05 · SECONDARY FRONT</div>
-    <h3>Red Sea · Bab el-Mandeb · Piracy</h3>
-    <div class="chart-box">
-      <img src="charts/chart4_chokepoints.png" alt="Choke Point Risk">
-      <div class="chart-caption">fig 4 · choke point risk matrix</div>
-    </div>
-    <p style="margin-bottom:10px;"><strong>Houthi</strong> weapons caches intact. July 5 attack near Hodeida confirmed resumed targeting. Galaxy Leader hijack precedent (Nov 2023) demonstrated capability to board and hold vessels.</p>
-    <p style="margin-bottom:10px;"><strong>Somali piracy</strong> surging — 3 merchant vessels hijacked, <span class="hl-amber">44 seafarers held captive</span>. Indian Navy intercepted attack 300nm ENE of Djibouti on July 1.</p>
-    <div class="alert-box">
-      <div class="title" style="color:var(--amber);">🔮 FORECAST</div>
-      <p style="margin:0;font-size:13px;">Two-front disruption (Hormuz + Bab el-Mandeb) would force Cape of Good Hope rerouting — <strong>+10-14 days transit</strong>, removing 2-3M bpd effective supply.</p>
     </div>
   </div>
+</div>
 
-  <!-- PRICE -->
-  <div class="card col-12 fade-in" id="price">
-    <div class="card-label"><span class="marker" style="background:var(--green)"></span>06 · PRICE OUTLOOK</div>
-    <h3>The next disruption will be different.</h3>
+<!-- ═══ PIPELINES ═══ -->
+<div class="section-head" id="pipelines">
+  <h2>Pipeline Bypass <span class="num">/ 04</span></h2>
+</div>
+<div class="card">
+  <div class="card-header"><h3>Pipeline Infrastructure</h3><span class="badge">4.3M / 10.3M BPD</span></div>
+  <div class="card-body" style="padding:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Pipeline</th>
+          <th>Status</th>
+          <th style="width:180px;">Utilization</th>
+          <th style="text-align:right;">Flow / Cap</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Saudi Petroline (East-West)</strong><br><span style="font-size:11px;color:var(--text-faint);">1,200km twin-pipe · 1980s</span></td>
+          <td><span class="tag green">Active</span></td>
+          <td>
+            <div class="bar-wrap"><div class="bar-fill" style="width:36%;background:var(--blue);"></div></div>
+          </td>
+          <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--blue);">2.5M / 7M</td>
+        </tr>
+        <tr>
+          <td><strong>UAE ADCOP (Habshan-Fujairah)</strong><br><span style="font-size:11px;color:var(--text-faint);">Bypasses Hormuz entirely</span></td>
+          <td><span class="tag green">Active</span></td>
+          <td>
+            <div class="bar-wrap"><div class="bar-fill" style="width:83%;background:var(--green);"></div></div>
+          </td>
+          <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--green);">1.5M / 1.8M</td>
+        </tr>
+        <tr>
+          <td><strong>ADNOC West-East 1</strong><br><span style="font-size:11px;color:var(--text-faint);">Under construction · ETA 2027</span></td>
+          <td><span class="tag purple">Building</span></td>
+          <td>
+            <div class="bar-wrap"><div class="bar-fill" style="width:2%;background:var(--purple);"></div></div>
+          </td>
+          <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--purple);">0 / 1.5M</td>
+        </tr>
+        <tr>
+          <td><strong>Trucking (all routes)</strong><br><span style="font-size:11px;color:var(--text-faint);">Road infrastructure insufficient</span></td>
+          <td><span class="tag grey">Negligible</span></td>
+          <td>
+            <div class="bar-wrap"><div class="bar-fill" style="width:1%;background:var(--text-faint);"></div></div>
+          </td>
+          <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--text-dim);">~0</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="padding:16px 20px;border-top:1px solid var(--border);">
+      <p style="margin:0;font-size:13px;">Combined bypass: <strong>4.3M bpd</strong>. Even at full build-out (10.3M), covers only ~half of pre-war Hormuz volumes. <span class="hl-red">Hormuz remains irreplaceable.</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ THREATS ═══ -->
+<div class="section-head" id="threats">
+  <h2>Secondary Front <span class="num">/ 05</span></h2>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><h3>Red Sea · Bab el-Mandeb</h3><span class="badge">ELEVATED</span></div>
+    <div class="card-body">
+      <div class="chart-frame">
+        <img src="charts/chart4_chokepoints.png" alt="Choke Point Risk">
+        <div class="chart-cap">fig 4 · choke point risk matrix</div>
+      </div>
+      <p><strong>Houthi</strong> weapons caches intact. July 5 attack near Hodeida confirmed resumed targeting. Galaxy Leader hijack precedent (Nov 2023).</p>
+      <p><strong>Somali piracy</strong> surging — 3 merchant vessels hijacked, <span class="hl-amber">44 seafarers held captive</span>.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Two-Front Risk Assessment</h3></div>
+    <div class="card-body">
+      <div class="alert alert-amber">
+        <div class="title">🔮 FORECAST</div>
+        <p>Two-front disruption (Hormuz + Bab el-Mandeb) would force Cape of Good Hope rerouting — <strong>+10-14 days transit</strong>, removing 2-3M bpd effective supply.</p>
+      </div>
+      <table style="margin-top:8px;">
+        <tr><td style="border:none;padding:6px 0;color:var(--text-dim);font-size:12px;">Houthi capability</td><td style="border:none;text-align:right;"><span class="tag amber">Intact</span></td></tr>
+        <tr><td style="border:none;padding:6px 0;color:var(--text-dim);font-size:12px;">Somali piracy</td><td style="border:none;text-align:right;"><span class="tag red">3 vessels hijacked</span></td></tr>
+        <tr><td style="border:none;padding:6px 0;color:var(--text-dim);font-size:12px;">Cape reroute penalty</td><td style="border:none;text-align:right;"><span class="tag amber">+10-14 days</span></td></tr>
+        <tr><td style="border:none;padding:6px 0;color:var(--text-dim);font-size:12px;">Effective supply loss</td><td style="border:none;text-align:right;"><span class="tag red">2-3M bpd</span></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PRICE ═══ -->
+<div class="section-head" id="price">
+  <h2>Price Outlook <span class="num">/ 06</span></h2>
+</div>
+<div class="card">
+  <div class="card-header"><h3>Brent Crude Scenarios</h3><span class="badge">NO SAFETY NET</span></div>
+  <div class="card-body">
     <div class="price-grid">
       <div class="price-cell">
-        <div class="p" style="color:var(--text-dim);">$66</div>
+        <div class="v" style="color:var(--text-dim);">$66</div>
         <div class="l">Pre-war · Feb 2026</div>
       </div>
       <div class="price-cell">
-        <div class="p" style="color:var(--red);">$126</div>
-        <div class="l">Peak · Mar 8 2026</div>
+        <div class="v" style="color:var(--red);">$126</div>
+        <div class="l">Peak · Mar 8</div>
       </div>
       <div class="price-cell">
-        <div class="p" style="color:var(--amber);">$86</div>
+        <div class="v" style="color:var(--amber);">$86</div>
         <div class="l">Current · Jul 15</div>
       </div>
       <div class="price-cell">
-        <div class="p" style="color:var(--red);opacity:0.6;">$150?</div>
-        <div class="l">CBA · prolonged closure</div>
+        <div class="v" style="color:var(--red);opacity:0.6;">$150+</div>
+        <div class="l">Prolonged Closure</div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px;">
-      <div style="padding:12px 16px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid var(--border);">
-        <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Commonwealth Bank</div>
-        <p style="font-size:13px;">$150/bbl if Hormuz remains closed — the price needed to force demand destruction.</p>
+    <div class="grid-2" style="margin-top:16px;">
+      <div style="padding:14px;background:var(--bg-inset);border:1px solid var(--border);border-radius:8px;">
+        <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Commonwealth Bank</div>
+        <p style="font-size:13px;margin:0;">$150/bbl if Hormuz remains closed — the price needed to force demand destruction.</p>
       </div>
-      <div style="padding:12px 16px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid var(--border);">
-        <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">IMF</div>
-        <p style="font-size:13px;">"Operating without a safety net" — even small disruptions will produce outsized price moves.</p>
+      <div style="padding:14px;background:var(--bg-inset);border:1px solid var(--border);border-radius:8px;">
+        <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">IMF</div>
+        <p style="font-size:13px;margin:0;">"Operating without a safety net" — even small disruptions will produce outsized price moves.</p>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ═══ OPPOSING VIEWS ═══ -->
+<!-- ═══════════════════════════════ -->
+<!-- ═══ OPPOSING VIEWS SECTION ═══ -->
+<!-- ═══════════════════════════════ -->
 
-  <!-- INSIDER TRADING -->
-  <div class="card col-6 fade-in" id="opposing">
-    <div class="card-label"><span class="marker" style="background:var(--red)"></span>07 · THE $7 BILLION QUESTION</div>
-    <h3>Perfectly timed bets.</h3>
-    <p style="margin-bottom:12px;">On April 7, <strong>$950M in oil sell orders</strong> executed in a single minute — minutes before Trump announced the ceasefire. On April 17, a <strong>$760M short position</strong> placed 20 minutes before Iran's FM announced Hormuz reopening. A third series: <strong>7,990 lots of Brent futures</strong> shorted April 17. Total across multiple exchanges: <span class="hl">~$7 billion</span>.</p>
-    <div class="alert-box">
-      <div class="title">🔍 CFTC PROBE ACTIVE</div>
-      <p style="margin:0;font-size:13px;">The Commodity Futures Trading Commission is examining trades placed before every major Trump Iran policy shift. No charges filed. Snopes could not confirm the $51M Trump-linked account claim. But the pattern is undeniable.</p>
+<div class="section-head" id="insider" style="margin-top:48px;">
+  <h2 style="color:var(--purple);">◈ Opposing Views &amp; Alternative Analysis</h2>
+  <div class="meta">Far-out takes, hard-to-find facts, and dissenting frameworks</div>
+</div>
+
+<!-- $7B INSIDER TRADING -->
+<div class="grid-2" style="margin-bottom:16px;">
+  <div class="card">
+    <div class="card-header"><h3>The $7 Billion Question</h3><span class="badge" style="color:var(--red);border-color:rgba(239,68,68,0.2);">07 · CFTC PROBE</span></div>
+    <div class="card-body">
+      <p>On April 7, <strong>$950M in oil sell orders</strong> executed in a single minute — minutes before Trump announced the ceasefire. On April 17, a <strong>$760M short</strong> placed 20 minutes before Iran's FM announced Hormuz reopening.</p>
+      <p>Total across multiple exchanges: <span class="hl-red">~$7 billion</span> in perfectly timed bets.</p>
+      <div class="alert alert-red">
+        <div class="title">🔍 CFTC INVESTIGATING</div>
+        <p>Examining trades placed before <strong>every</strong> major Trump Iran policy shift. No charges filed. Snopes could not confirm the $51M Trump-linked account.</p>
+      </div>
+      <div class="quote">
+        "It's as if you're sitting down at a poker game, and before a card was even turned over, you're all in."
+        <div class="attr">— Andy Lipow, Lipow Oil Associates</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-faint);">Sources: Reuters, Guardian, Wikipedia</p>
     </div>
-    <blockquote>
-      "It's as if you're sitting down at a poker game, and before a card was even turned over, you're all in."
-      <div class="attr">— Andy Lipow, Lipow Oil Associates</div>
-    </blockquote>
-    <p style="font-size:12px;color:var(--text-faint);">Sources: Reuters, Guardian, Wikipedia (Insider trading allegations during the second Trump administration)</p>
   </div>
 
-  <!-- WHO BENEFITS -->
-  <div class="card col-6 fade-in">
-    <div class="card-label"><span class="marker" style="background:var(--amber)"></span>08 · FOLLOW THE MONEY</div>
-    <h3>Who actually profited?</h3>
-    <div class="route-list">
-      <div class="route-item">
-        <div class="bar" style="width:90%;background:var(--green);"></div>
-        <div class="info">
-          <div class="name">US Energy Sector</div>
-          <div class="detail">+$93B market cap since Feb 28 · +22% profit</div>
+  <!-- FOLLOW THE MONEY -->
+  <div class="card" id="profits">
+    <div class="card-header"><h3>Follow the Money</h3><span class="badge" style="color:var(--amber);border-color:rgba(245,158,11,0.2);">08 · WINNERS</span></div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr><th>Beneficiary</th><th style="text-align:right;">Gain</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>US Energy Sector</strong><br><span style="font-size:11px;color:var(--text-faint);">Market cap since Feb 28</span></td>
+            <td style="text-align:right;"><span class="tag green">+$93B</span></td>
+          </tr>
+          <tr>
+            <td><strong>Russia (Urals)</strong><br><span style="font-size:11px;color:var(--text-faint);">Oil tax revenue, April</span></td>
+            <td style="text-align:right;"><span class="tag green">2× to $9B</span></td>
+          </tr>
+          <tr>
+            <td><strong>Iran (Hormuz tolls)</strong><br><span style="font-size:11px;color:var(--text-faint);">$1/bbl × tankers</span></td>
+            <td style="text-align:right;"><span class="tag amber">$20M/day</span></td>
+          </tr>
+          <tr>
+            <td><strong>China (demand cut)</strong><br><span style="font-size:11px;color:var(--text-faint);">Largest single crisis offset</span></td>
+            <td style="text-align:right;"><span class="tag blue">-3M bpd</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="quote" style="margin-top:12px;">
+        "The closure of the Strait of Hormuz is an attempt to reshape global energy market regulations to benefit the United States."
+        <div class="attr">— Igor Sechin, CEO of Rosneft · June 2026</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-faint);">Sources: Dow Jones Markets, Reuters, Chatham House, SocGen</p>
+    </div>
+  </div>
+</div>
+
+<!-- CHOKEPOINT DOCTRINE -->
+<div class="card" id="doctrine" style="margin-bottom:16px;">
+  <div class="card-header"><h3>The Chokepoint Doctrine</h3><span class="badge" style="color:var(--purple);border-color:rgba(139,92,246,0.2);">09 · ALTERNATIVE FRAMEWORK</span></div>
+  <div class="card-body">
+    <div class="grid-2">
+      <div>
+        <p>Helen Thompson (Cambridge) and Elbridge Colby's <strong>Strategy of Denial</strong> framework suggest the Hormuz closure wasn't a bug — it was a <span class="hl-red">feature</span>. The thesis: choking off Gulf oil disproportionately harms China (50% of imports via Hormuz), while the US — a net energy exporter — benefits from elevated prices.</p>
+        <p>Project 2025 explicitly frames strangling China's energy supply lines as strategic doctrine. Under this read, Trump's erratic Hormuz policy isn't indecision — it's <strong>controlled escalation</strong>.</p>
+      </div>
+      <div>
+        <p>The <span class="hl-amber">20% toll proposal</span> (July 13, retracted July 14) fits: float a tariff on global shipping → let the market price it in → "back down" while the threat persists.</p>
+        <p>Al Jazeera called it <strong>"piracy."</strong> The IMO formally opposed it. But the signal was sent.</p>
+        <div class="quote">
+          "We must consider the possibility that some of what is happening is not just about Iran, but about the Trump administration's attempt to harm China."
+          <div class="attr">— Helen Thompson, Cambridge · MarketWatch, April 2026</div>
         </div>
-        <div class="flow" style="color:var(--green);">+$93B</div>
-      </div>
-      <div class="route-item">
-        <div class="bar" style="width:75%;background:var(--green);"></div>
-        <div class="info">
-          <div class="name">Russia (Urals revenue)</div>
-          <div class="detail">Oil tax revenue doubled to $9B in April alone</div>
-        </div>
-        <div class="flow" style="color:var(--green);">2× revenue</div>
-      </div>
-      <div class="route-item">
-        <div class="bar" style="width:60%;background:var(--amber);"></div>
-        <div class="info">
-          <div class="name">Iran (Hormuz tolls)</div>
-          <div class="detail">~$1/bbl × tankers = up to $20M/day</div>
-        </div>
-        <div class="flow" style="color:var(--amber);">$20M/day</div>
-      </div>
-      <div class="route-item">
-        <div class="bar" style="width:45%;background:var(--blue);"></div>
-        <div class="info">
-          <div class="name">China (demand destruction)</div>
-          <div class="detail">Cut 3M bpd imports — largest single offset to crisis</div>
-        </div>
-        <div class="flow" style="color:var(--blue);">-3M bpd</div>
       </div>
     </div>
-    <blockquote>
-      "The closure of the Strait of Hormuz is an attempt to reshape global energy market regulations to benefit the United States."
-      <div class="attr">— Igor Sechin, CEO of Rosneft · June 2026</div>
-    </blockquote>
-    <p style="font-size:12px;color:var(--text-faint);">Sources: Dow Jones Markets, Reuters, Chatham House, Washington Institute, SocGen</p>
+    <p style="font-size:11px;color:var(--text-faint);">Sources: China Beyond the Wall, MarketWatch, Al Jazeera, CFR, Heritage Foundation</p>
   </div>
+</div>
 
-  <!-- DELIBERATE CHOKEPOINT THEORY -->
-  <div class="card col-8 fade-in">
-    <div class="card-label"><span class="marker" style="background:var(--purple)"></span>09 · THE CHOKEPOINT DOCTRINE</div>
-    <h3>What if the closure was the point?</h3>
-    <p style="margin-bottom:12px;">Helen Thompson (Cambridge) and Elbridge Colby's "Strategy of Denial" framework suggest an unsettling read: the Hormuz closure wasn't a bug — it was a <span class="hl">feature</span>. The thesis: choking off Gulf oil disproportionately harms China (50% of imports via Hormuz), while the US — now a net energy exporter — benefits from elevated prices.</p>
-    <p style="margin-bottom:12px;">Project 2025 and the Heritage Foundation's blueprints explicitly frame strangling China's energy supply lines as strategic doctrine. Under this reading, Trump's erratic Hormuz policy (blockade → reopen → blockade → toll → retract) isn't indecision — it's <strong>controlled escalation</strong> designed to keep prices elevated without triggering a full collapse.</p>
-    <p>The <span class="hl-amber">20% toll proposal</span> (July 13, retracted July 14) fits this pattern: float a tariff on global shipping, let the market price it in, then "back down" while the threat persists. Al Jazeera called it <strong>"piracy."</strong> The IMO formally opposed it. But the signal was sent.</p>
-    <blockquote>
-      "We must consider the possibility that some of what is happening is not just about Iran, but about the Trump administration's attempt to harm China."
-      <div class="attr">— Helen Thompson, Cambridge University · via MarketWatch, April 2026</div>
-    </blockquote>
-    <p style="font-size:12px;color:var(--text-faint);">Sources: China Beyond the Wall, MarketWatch, Al Jazeera, CFR, Heritage Foundation, Brookings</p>
-  </div>
-
-  <!-- CHINA'S HIDDEN HAND -->
-  <div class="card col-4 fade-in">
-    <div class="card-label"><span class="marker" style="background:var(--blue)"></span>10 · CHINA'S BLACK BOX</div>
-    <h3>The real reserve number.</h3>
-    <p style="margin-bottom:12px;">China's SPR is <strong>classified</strong>. EIA estimates <strong>~1.4 billion barrels</strong> as of Dec 2025 — potentially larger than every other nation's reserve combined. They were still <span class="hl">building inventory</span> during the crisis.</p>
-    <p style="margin-bottom:12px;">Meanwhile, China cut imports by <strong>3M bpd</strong> — the single largest offset to the Hormuz shock, larger than all coordinated SPR releases combined (SocGen). This wasn't demand collapse. It was a deliberate drawdown of a stockpile nobody can verify.</p>
-    <p style="font-size:12px;color:var(--text-faint);">China's 19M bpd refining capacity — the world's largest — runs below optimal utilization. Commercially inefficient. As national security strategy: pure optionality.</p>
-    <blockquote style="border-color:var(--blue);">
-      "A reserve figure tells an adversary how long you can bleed before politics changes. Which is exactly why Beijing has never published one."
-      <div class="attr">— The Monetary Skeptic, Substack · July 2026</div>
-    </blockquote>
-    <p style="font-size:12px;color:var(--text-faint);">Sources: EIA, SocGen/CNBC, Vortexa, Baker Institute, The Diplomat, Nikkei Asia</p>
-  </div>
-
-  <!-- CRYPTO ANGLE -->
-  <div class="card col-6 fade-in">
-    <div class="card-label"><span class="marker" style="background:var(--amber)"></span>11 · BITCOIN &amp; THE Bearer ASSET</div>
-    <h3>Iran's digital sanctions workaround.</h3>
-    <p style="margin-bottom:12px;">Iran legalized industrial BTC mining in 2019. Cost of production: <strong>~$1,300/coin</strong> via state-subsidized electricity. Before the war, Iran ran <strong>4.2% of global hashrate</strong> with 427,000 mining devices.</p>
-    <p style="margin-bottom:12px;">Iran's parliament passed the <strong>"Strait of Hormuz Management Plan"</strong> on March 30 — a toll system charging tankers up to <strong>$2M per ship</strong>. Western press reported settlement in yuan and stablecoins. An Oil Ministry spokesperson added <span class="hl-amber">bitcoin</span> to the list.</p>
-    <p style="font-size:12px;color:var(--text-faint);margin-bottom:8px;">Blockchain analytics (TRM Labs, Chainalysis, Galaxy) found <strong>no onchain evidence</strong> of BTC moving at the scale needed. Lightning's largest-ever tx: $1M. A single tanker toll: $2M. The tech isn't there yet — but the strategic logic is.</p>
-    <p style="font-size:12px;color:var(--text-faint);">IRGC-linked crypto flows since 2023: ~$3B. 99% settled in USDT on Tron, not BTC.</p>
-    <p style="font-size:12px;color:var(--text-faint);">Sources: Bitcoin Policy Institute, TRM Labs, Chainalysis, Reuters</p>
-  </div>
-
-  <!-- PEAK OIL / EV TIPPING POINT -->
-  <div class="card col-6 fade-in">
-    <div class="card-label"><span class="marker" style="background:var(--green)"></span>12 · BLACK MARCH &amp; THE EV TIPPING POINT</div>
-    <h3>The crisis that killed peak demand.</h3>
-    <p style="margin-bottom:12px;">Forbes, CFR, and Oxford Energy all agree: the Hormuz crisis may have <strong>permanently destroyed oil demand</strong>. Not through supply — through a structural shift in how the world consumes energy.</p>
-    <p style="margin-bottom:12px;">EV sales doubled. Battery costs fell 36%. The global EV fleet now avoids consumption equivalent to <strong>70% of Iran's total exports</strong>. The Japan Times declared: <span class="hl-green">peak oil demand arrives sooner than expected.</span></p>
-    <div class="alert-box" style="background:linear-gradient(135deg,rgba(45,212,168,0.08),rgba(77,171,247,0.05));border-color:rgba(45,212,168,0.15);">
-      <div class="title" style="color:var(--green);">⊕ STRUCTURAL SHIFT</div>
-      <p style="margin:0;font-size:13px;">Experts now anticipate a post-ceasefire <strong>"maxi-glut"</strong> — continued supply investment plus demand destruction from EV adoption and remote work. The market may have cancelled the crisis before the ceasefire.</p>
+<!-- CHINA + CRYPTO -->
+<div class="grid-2" style="margin-bottom:16px;">
+  <div class="card" id="china">
+    <div class="card-header"><h3>China's Black Box</h3><span class="badge" style="color:var(--blue);border-color:rgba(59,130,246,0.2);">10 · CLASSIFIED</span></div>
+    <div class="card-body">
+      <p>China's SPR is <strong>classified</strong>. EIA estimates <strong>~1.4 billion barrels</strong> as of Dec 2025 — potentially larger than every other nation's reserve combined.</p>
+      <p>They were still <span class="hl-blue">building inventory</span> during the crisis while cutting imports 3M bpd — the single largest offset to the Hormuz shock, larger than all coordinated SPR releases combined (SocGen).</p>
+      <table style="margin:8px 0;">
+        <tr><td style="border:none;padding:4px 0;font-size:12px;color:var(--text-dim);">Refining capacity</td><td style="border:none;text-align:right;font-size:12px;"><strong>19M bpd</strong> (world's largest)</td></tr>
+        <tr><td style="border:none;padding:4px 0;font-size:12px;color:var(--text-dim);">Utilization</td><td style="border:none;text-align:right;font-size:12px;"><span class="tag amber">Below optimal</span></td></tr>
+        <tr><td style="border:none;padding:4px 0;font-size:12px;color:var(--text-dim);">Mining/stockpile behavior</td><td style="border:none;text-align:right;font-size:12px;"><span class="tag green">Accumulating</span></td></tr>
+      </table>
+      <div class="quote" style="border-color:var(--blue);">
+        "A reserve figure tells an adversary how long you can bleed before politics changes. Which is exactly why Beijing has never published one."
+        <div class="attr">— The Monetary Skeptic · July 2026</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-faint);">Sources: EIA, SocGen, Vortexa, Baker Institute, The Diplomat</p>
     </div>
-    <p style="font-size:12px;color:var(--text-faint);margin-top:8px;">Sources: Forbes, CFR, Energy Transitions Commission, Japan Times, Oxford Institute for Energy Studies</p>
   </div>
 
-  <!-- TRUMP'S HORMUZ TOLL -->
-  <div class="card col-12 fade-in">
-    <div class="card-label"><span class="marker" style="background:var(--red)"></span>13 · THE TROLL TOLL</div>
-    <h3>Trump declared himself "Guardian of the Strait" and demanded 20% of all cargo. Then took it back 24 hours later.</h3>
-    <p style="margin-bottom:12px;">On July 13, Trump announced the US would charge <strong>20% of all cargo value</strong> transiting Hormuz as a "safety and security" fee. Shipping industry called it a <span class="hl">further disincentive</span> to an already fragile route. The IMO formally opposed transit fees. Al Jazeera ran the headline: <strong>"Piracy."</strong></p>
-    <p style="margin-bottom:12px;">On July 14, Trump walked it back entirely, saying Gulf states would instead make "investment and trade deals." Classic pattern: float a tariff → let the market price the risk → withdraw while the uncertainty persists. The <span class="hl-amber">threat premium</span> outlasts the policy.</p>
-    <blockquote style="border-color:var(--amber);">
-      "The U.S.A. will be reimbursed, at the rate of 20% on all cargo shipped, for any and all costs necessary to provide safety and security to this very volatile section of the World."
-      <div class="attr">— Donald Trump, Truth Social · July 13, 2026 (retracted July 14)</div>
-    </blockquote>
-    <p style="font-size:12px;color:var(--text-faint);">Sources: CNBC, Al Jazeera, Politico, NYT, PBS, CNN, The Hill, Guardian, Euronews</p>
+  <div class="card" id="crypto">
+    <div class="card-header"><h3>Bitcoin &amp; The Bearer Asset</h3><span class="badge" style="color:var(--amber);border-color:rgba(245,158,11,0.2);">11 · IRAN DIGITAL</span></div>
+    <div class="card-body">
+      <p>Iran legalized industrial BTC mining in 2019. Production cost: <strong>~$1,300/coin</strong> via subsidized electricity. Before the war: <strong>4.2% of global hashrate</strong>, 427,000 mining devices.</p>
+      <p>Iran's <strong>"Strait of Hormuz Management Plan"</strong> (March 30) charges tankers up to <strong>$2M/ship</strong>. Settlement reported in yuan, stablecoins — and an Oil Ministry spokesperson added <span class="hl-amber">bitcoin</span>.</p>
+      <div class="alert alert-amber">
+        <div class="title">⛓ ONCHAIN REALITY CHECK</div>
+        <p>TRM Labs, Chainalysis, Galaxy: <strong>no onchain evidence</strong> of BTC at scale. Lightning's largest tx ever: $1M. A single toll: $2M. The tech isn't there — but the logic is.</p>
+      </div>
+      <p>IRGC-linked crypto flows since 2023: <strong>~$3B</strong>. 99% settled in <span class="hl-blue">USDT on Tron</span>, not BTC.</p>
+      <p style="font-size:11px;color:var(--text-faint);">Sources: Bitcoin Policy Institute, TRM Labs, Chainalysis, Reuters</p>
+    </div>
+  </div>
+</div>
+
+<!-- EV TIPPING POINT + TROLL TOLL -->
+<div class="grid-2" style="margin-bottom:16px;">
+  <div class="card" id="ev">
+    <div class="card-header"><h3>Black March &amp; The EV Tipping Point</h3><span class="badge" style="color:var(--green);border-color:rgba(16,185,129,0.2);">12 · DEMAND DESTRUCTION</span></div>
+    <div class="card-body">
+      <p>Forbes, CFR, and Oxford Energy agree: the Hormuz crisis may have <strong>permanently destroyed oil demand</strong>. Not through supply — through structural consumption shift.</p>
+      <p>EV sales doubled. Battery costs fell 36%. Global EV fleet now avoids consumption equivalent to <strong>70% of Iran's total exports</strong>.</p>
+      <div class="alert alert-green">
+        <div class="title">⊕ STRUCTURAL SHIFT</div>
+        <p>Experts anticipate a post-ceasefire <strong>"maxi-glut"</strong> — supply investment plus demand destruction from EVs and remote work.</p>
+      </div>
+      <p style="font-size:11px;color:var(--text-faint);">Sources: Forbes, CFR, Japan Times, Oxford Energy, Energy Transitions Commission</p>
+    </div>
   </div>
 
-  <!-- SOURCES -->
-  <div class="card col-12 fade-in">
-    <div class="card-label"><span class="marker" style="background:var(--text-faint)"></span>SOURCES & METHODOLOGY</div>
+  <div class="card" id="troll">
+    <div class="card-header"><h3>The Troll Toll</h3><span class="badge" style="color:var(--red);border-color:rgba(239,68,68,0.2);">13 · JULY 13–14</span></div>
+    <div class="card-body">
+      <p>Trump declared the US <strong>"Guardian of the Strait"</strong> and demanded <strong>20% of all cargo value</strong>. The IMO formally opposed it. Al Jazeera: <strong>"Piracy."</strong></p>
+      <p>24 hours later, walked it back entirely. Classic pattern: float a tariff → market prices the risk → withdraw while uncertainty persists.</p>
+      <table style="margin:8px 0;">
+        <tr><td style="border:none;padding:4px 0;font-size:12px;color:var(--text-dim);">Proposed fee</td><td style="border:none;text-align:right;font-size:12px;"><span class="tag red">20% of cargo</span></td></tr>
+        <tr><td style="border:none;padding:4px 0;font-size:12px;color:var(--text-dim);">Duration</td><td style="border:none;text-align:right;font-size:12px;"><span class="tag amber">~24 hours</span></td></tr>
+        <tr><td style="border:none;padding:4px 0;font-size:12px;color:var(--text-dim);">IMO response</td><td style="border:none;text-align:right;font-size:12px;"><span class="tag grey">Opposed</span></td></tr>
+        <tr><td style="border:none;padding:4px 0;font-size:12px;color:var(--text-dim);">Al Jazeera</td><td style="border:none;text-align:right;font-size:12px;"><span class="tag red">"Piracy"</span></td></tr>
+      </table>
+      <div class="quote" style="border-color:var(--amber);">
+        "The U.S.A. will be reimbursed, at the rate of 20% on all cargo shipped..."
+        <div class="attr">— Trump, Truth Social · Jul 13 (retracted Jul 14)</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-faint);">Sources: CNBC, Politico, NYT, PBS, CNN, Al Jazeera</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SOURCES ═══ -->
+<div class="section-head">
+  <h2>Sources &amp; Methodology</h2>
+</div>
+<div class="card">
+  <div class="card-body">
     <div class="sources">
       <div>EIA — Hormuz chokepoint, SPR weekly</div>
       <div>IEA — Coordinated release data</div>
       <div>IMF Blog — Jul 15 2026</div>
       <div>Windward — Tanker flow intelligence</div>
-      <div>Kpler — Saudi export flows (Jul 2)</div>
+      <div>Kpler — Saudi export flows</div>
       <div>UKMTO — Red Sea incidents</div>
-      <div>IMO — Seafarer captivity data</div>
-      <div>DOE — SPR Quick Facts (Jul 2026)</div>
-      <div>CNBC · Reuters · Guardian · Al Arabiya</div>
-      <div>War on the Rocks · Castor Vali</div>
-      <div>CFTC — Suspicious trade probe (active)</div>
+      <div>DOE — SPR Quick Facts</div>
+      <div>CFTC — Suspicious trade probe</div>
       <div>Bitcoin Policy Institute · TRM Labs</div>
-      <div>Chatham House — Russia windfall analysis</div>
+      <div>Chatham House — Russia windfall</div>
       <div>Washington Institute — Urals revenue</div>
       <div>CFR · Forbes — EV tipping point</div>
       <div>SocGen — China demand offset</div>
-      <div>Baker Institute — China's Hormuz playbook</div>
-      <div>The Diplomat · Nikkei Asia · Vortexa</div>
-      <div>Dow Jones Markets — US energy cap gains</div>
+      <div>Baker Institute — China's playbook</div>
+      <div>Dow Jones — US energy cap gains</div>
       <div>Snopes — $51M claim analysis</div>
+      <div>CNBC · Reuters · Guardian</div>
+      <div>Al Jazeera · Politico · PBS · CNN</div>
     </div>
-    <p style="font-size:11px;color:var(--text-faint);margin-top:16px;line-height:1.7;">
+    <p style="font-size:11px;color:var(--text-faint);margin-top:12px;line-height:1.7;">
       Open-source intelligence synthesis. Pipeline utilization carries ±0.5M bpd uncertainty. Global reserve figures are IEA/IMF estimates — China's SPR (~1B+ bbl) not transparently reported. Figures marked as estimates derived from cited sources.
     </p>
   </div>
+</div>
 
-</div>
-</div>
+</div><!-- /content -->
+</div><!-- /main -->
 
 <!-- FOOTER -->
-<footer>
-  <div class="wrap">
-    <div class="brand">HORMUZ<span style="color:var(--text-faint);font-weight:400;"> // INTEL</span></div>
-    <p>OSINT Compilation · Report ID: HORMUZ-2026-0715<br>
-    Generated by Lux · Classification: UNCLASSIFIED / Open Source</p>
-  </div>
-</footer>
+<div class="footer">
+  HORMUZ // INTEL · OSINT Compilation · Report ID: HORMUZ-2026-0715<br>
+  Generated by Lux · Classification: UNCLASSIFIED / Open Source
+</div>
 
 </body>
 </html>
