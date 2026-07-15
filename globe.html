@@ -59,14 +59,25 @@
 
   #tooltip {
     position: fixed; z-index: 30;
-    background: rgba(3,5,12,0.92); border: 1px solid rgba(200,224,236,0.2);
-    border-radius: 4px; padding: 10px 14px;
-    font-size: 11px; color: #c8e0ec; line-height: 1.6;
+    background: rgba(3,5,12,0.95); border: 1px solid rgba(200,224,236,0.25);
+    border-radius: 6px; padding: 14px 18px;
+    font-size: 12px; color: #c8e0ec; line-height: 1.7;
     pointer-events: none; opacity: 0; transition: opacity 0.15s;
-    max-width: 280px; backdrop-filter: blur(10px);
+    max-width: 340px; backdrop-filter: blur(12px);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
   }
-  #tooltip .tt-title { font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+  #tooltip .tt-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #fff; }
   #tooltip .tt-val { color: #e94560; font-weight: bold; }
+  #tooltip .tt-section { font-size: 9px; letter-spacing: 0.15em; color: #2e5568; text-transform: uppercase; margin-top: 8px; margin-bottom: 2px; }
+  #tooltip .tt-row { display: flex; justify-content: space-between; gap: 12px; }
+  #tooltip .tt-row .lbl { color: #5a8090; }
+  #tooltip .tt-route { padding: 3px 0; border-bottom: 1px solid rgba(200,224,236,0.06); }
+  #tooltip .tt-route:last-child { border-bottom: none; }
+  #tooltip .tt-badge { display: inline-block; font-size: 9px; padding: 1px 6px; border-radius: 2px; margin-left: 4px; }
+  #tooltip .tt-badge.active { background: rgba(233,69,96,0.2); color: #ff8899; }
+  #tooltip .tt-badge.halted { background: rgba(102,17,34,0.3); color: #aa3344; }
+  #tooltip .tt-badge.pipeline { background: rgba(74,144,217,0.2); color: #6aafef; }
+  #tooltip .tt-badge.threat { background: rgba(245,166,35,0.2); color: #f5a623; }
 
   #legend {
     position: fixed; bottom: 90px; left: 20px; z-index: 10;
@@ -585,14 +596,14 @@ function createFlowArc(fromKey, toKey, color, flow, status = 'active', group = f
     lctx.fillStyle = 'rgba(3,5,12,0.6)';
     lctx.fillRect(0, 0, 128, 32);
     lctx.fillStyle = routeType === 'pipeline' ? '#6aafef' : '#ff8899';
-    lctx.font = 'bold 16px monospace';
+    lctx.font = 'bold 18px monospace';
     lctx.textAlign = 'center';
     lctx.fillText(flow + 'M bpd', 64, 22);
     const labelTex = new THREE.CanvasTexture(labelCanvas);
-    const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false, opacity: 0.8 });
+    const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false, opacity: 0.85 });
     const label = new THREE.Sprite(labelMat);
     label.position.copy(midPoint);
-    label.scale.set(6, 1.5, 1);
+    label.scale.set(9, 2.25, 1);
     label.userData = { type: 'vol-label' };
     group.add(label);
   }
@@ -680,9 +691,127 @@ reserveGroup.visible = false;
 //  ANIMATION
 // ============================================================
 
+// Location metadata for rich tooltips
+const LOCATION_DETAILS = {
+  hormuz: {
+    type: 'CHoke Point', significance: 'World\'s most critical oil chokepoint',
+    dailyFlow: '20.5M bpd (21% of global consumption)',
+    width: '21 miles wide', shippingLane: '2 miles wide each direction',
+    countries: 'Iran (north), Oman/UAE (south)',
+    context: 'Any closure removes 8.5M bpd from market. US 5th Fleet patrols.',
+  },
+  babElMan: {
+    type: 'Choke Point', significance: 'Gateway to Suez Canal from Indian Ocean',
+    dailyFlow: '6.2M bpd (normal)', currentStatus: 'Disrupted — Houthi attacks',
+    width: '18 miles wide', countries: 'Yemen (east), Djibouti/Eritrea (west)',
+    context: 'Tankers rerouting around Cape of Good Hope adds 10-15 days transit.',
+  },
+  suez: {
+    type: 'Choke Point', significance: 'Connects Red Sea to Mediterranean',
+    dailyFlow: '5.5M bpd (normal)', currentStatus: 'Reduced traffic due to Red Sea crisis',
+    countries: 'Egypt', context: '12% of global trade normally transits. Suezmax tankers carry ~1M bbl.',
+  },
+  yanbu: {
+    type: 'Pipeline Terminal', significance: 'Saudi Petroline terminus on Red Sea',
+    dailyFlow: '2.5M bpd (36% of 7M capacity)',
+    context: 'Bypasses Hormuz entirely. Can expand if Hormuz threatened.',
+  },
+  fujairah: {
+    type: 'Pipeline Terminal', significance: 'UAE ADCOP terminus on Gulf of Oman',
+    dailyFlow: '1.5M bpd (83% of 1.8M capacity)',
+    context: 'Bypasses Hormuz. Storage capacity: 14M bbl. Fast-growing hub.',
+  },
+  rasTanura: {
+    type: 'Export Terminal', significance: 'World\'s largest offshore oil loading facility',
+    dailyFlow: '6-7M bpd capacity', country: 'Saudi Arabia',
+    context: 'Processing capacity 5M bpd. Single point loading system for VLCCs.',
+  },
+  kharg: {
+    type: 'Export Terminal', significance: 'Iran\'s primary oil export terminal',
+    dailyFlow: 'Was 5M bpd (pre-sanctions)', country: 'Iran',
+    context: 'Currently limited by sanctions. Theoretical capacity significant if reopened.',
+  },
+  basra: {
+    type: 'Export Terminal', significance: 'Iraq\'s main oil terminal',
+    dailyFlow: '3.4M bpd', country: 'Iraq',
+    context: 'Iraq relies on Hormuz for ~90% of exports. Growing production.',
+  },
+  kuwait: {
+    type: 'Export Terminal', significance: 'Kuwait\'s main loading point',
+    dailyFlow: '2.5M bpd', country: 'Kuwait',
+    context: 'Kuwait has NO pipeline bypass — 100% Hormuz-dependent.',
+  },
+  doha: {
+    type: 'Export Hub', significance: 'Qatar energy exports', country: 'Qatar',
+    context: 'Major LNG exporter also transits Hormuz. QatarEnergy operates here.',
+  },
+  singapore: { type: 'Refinery Hub', significance: 'World\'s 3rd largest refining center', country: 'Singapore' },
+  shanghai: { type: 'Import Terminal', significance: 'China\'s largest oil port', country: 'China' },
+  yokohama: { type: 'Import Terminal', significance: 'Japan\'s main oil import port', country: 'Japan' },
+  rotterdam: { type: 'Import Terminal', significance: 'Europe\'s largest port', country: 'Netherlands' },
+  hodeida: { type: 'Conflict Zone', significance: 'Houthi-controlled port', context: 'Launch point for anti-ship missile attacks on Red Sea shipping.' },
+  djibouti: { type: 'Naval Base', significance: 'Multiple nation military presence', context: 'US, China, France, Japan all maintain bases. Anti-piracy operations hub.' },
+};
+
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2();
 const tooltip = document.getElementById('tooltip');
+
+function getRichTooltip(locKey) {
+  const loc = LOCATIONS[locKey];
+  const det = LOCATION_DETAILS[locKey];
+  if (!det) return `<div class="tt-title">${loc.name}</div><div class="lbl">No detailed data.</div>`;
+
+  let html = `<div class="tt-title">${loc.name}</div>`;
+  html += `<div class="tt-row"><span class="lbl">Type</span><span>${det.type}</span></div>`;
+  if (det.country) html += `<div class="tt-row"><span class="lbl">Country</span><span>${det.country}</span></div>`;
+  if (det.significance) html += `<div class="tt-section">Significance</div><div>${det.significance}</div>`;
+
+  // Flow data
+  if (det.dailyFlow) html += `<div class="tt-row"><span class="lbl">Daily Flow</span><span class="tt-val">${det.dailyFlow}</span></div>`;
+  if (det.currentStatus) html += `<div class="tt-row"><span class="lbl">Status</span><span style="color:#f5a623">${det.currentStatus}</span></div>`;
+  if (det.width) html += `<div class="tt-row"><span class="lbl">Width</span><span>${det.width}</span></div>`;
+  if (det.shippingLane) html += `<div class="tt-row"><span class="lbl">Shipping Lane</span><span>${det.shippingLane}</span></div>`;
+  if (det.countries) html += `<div class="tt-row"><span class="lbl">Bordering</span><span>${det.countries}</span></div>`;
+
+  // Routes through this node
+  const tankerRoutes = TANKER_ROUTES.filter(r => r.from === locKey || r.to === locKey);
+  const pipelineRoutes = PIPELINE_ROUTES.filter(r => r.from === locKey || r.to === locKey);
+  const redseaRoutes = REDSEA_ROUTES.filter(r => r.from === locKey || r.to === locKey);
+  const allRoutes = [
+    ...tankerRoutes.map(r => ({...r, kind: 'tanker'})),
+    ...pipelineRoutes.map(r => ({...r, kind: 'pipeline'})),
+    ...redseaRoutes.map(r => ({...r, kind: r.status === 'threat' ? 'threat' : 'redsea'})),
+  ];
+
+  if (allRoutes.length > 0) {
+    html += `<div class="tt-section">Routes (${allRoutes.length})</div>`;
+    allRoutes.forEach(r => {
+      const fromLoc = LOCATIONS[r.from]?.name || r.from;
+      const toLoc = LOCATIONS[r.to]?.name || r.to;
+      const flowStr = r.flow > 0 ? `${r.flow}M bpd` : (r.status === 'threat' ? 'THREAT ZONE' : 'HALTED');
+      const badgeClass = r.status === 'disrupted' ? 'halted' : r.kind === 'pipeline' ? 'pipeline' : r.status === 'threat' ? 'threat' : 'active';
+      html += `<div class="tt-route"><div class="tt-row"><span>${fromLoc.split('(')[0].trim()} → ${toLoc.split('(')[0].trim()}</span><span class="tt-badge ${badgeClass}">${flowStr}</span></div></div>`;
+    });
+  }
+
+  if (det.context) html += `<div class="tt-section">Intel</div><div style="color:#7a99aa;font-style:italic;">${det.context}</div>`;
+
+  return html;
+}
+
+function showTooltip(x, y, html) {
+  tooltip.innerHTML = html;
+  tooltip.style.opacity = 1;
+  // Keep tooltip on screen
+  const rect = tooltip.getBoundingClientRect();
+  let left = x + 15;
+  let top = y + 15;
+  if (left + rect.width > window.innerWidth - 10) left = x - rect.width - 15;
+  if (top + rect.height > window.innerHeight - 10) top = y - rect.height - 15;
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+}
 
 function onMouseMove(event) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -694,29 +823,19 @@ function onMouseMove(event) {
   if (intersects.length > 0) {
     const obj = intersects[0].object;
     if (obj.userData && obj.userData.locKey) {
-      const loc = LOCATIONS[obj.userData.locKey];
-      tooltip.style.opacity = 1;
-      tooltip.style.left = (event.clientX + 15) + 'px';
-      tooltip.style.top = (event.clientY + 15) + 'px';
-      tooltip.innerHTML = `<div class="tt-title">${loc.name}</div>`;
-
-      // Add route data
-      const routes = TANKER_ROUTES.filter(r => r.from === obj.userData.locKey || r.to === obj.userData.locKey);
-      if (routes.length > 0) {
-        tooltip.innerHTML += routes.map(r =>
-          `<div>${r.label}: <span class="tt-val">${r.flow > 0 ? r.flow + 'M bpd' : 'HALTED'}</span></div>`
-        ).join('');
-      }
+      showTooltip(event.clientX, event.clientY, getRichTooltip(obj.userData.locKey));
     } else if (obj.userData && obj.userData.type === 'reserve') {
       const d = obj.userData;
-      tooltip.style.opacity = 1;
-      tooltip.style.left = (event.clientX + 15) + 'px';
-      tooltip.style.top = (event.clientY + 15) + 'px';
       const pct = d.capacity > 0 ? ((d.current / d.capacity) * 100).toFixed(0) : 0;
-      tooltip.innerHTML = `<div class="tt-title">${d.name}</div>
-        <div>Current: <span class="tt-val">${d.current}M bbl</span></div>
-        <div>Capacity: ${d.capacity}M bbl</div>
-        <div>Fill: ${pct}%</div>`;
+      showTooltip(event.clientX, event.clientY,
+        `<div class="tt-title">${d.name}</div>
+        <div class="tt-row"><span class="lbl">Type</span><span>Strategic Petroleum Reserve</span></div>
+        <div class="tt-row"><span class="lbl">Current</span><span class="tt-val">${d.current}M bbl</span></div>
+        <div class="tt-row"><span class="lbl">Capacity</span><span>${d.capacity}M bbl</span></div>
+        <div class="tt-row"><span class="lbl">Fill Rate</span><span style="color:${pct > 30 ? '#16c79a' : '#e94560'}">${pct}%</span></div>
+        <div class="tt-section">Context</div>
+        <div style="color:#7a99aa;font-style:italic;">US SPR sites were drawn down to 43-year lows. Current refill rate: ~3M bbl/month.</div>`
+      );
     }
   } else {
     tooltip.style.opacity = 0;
