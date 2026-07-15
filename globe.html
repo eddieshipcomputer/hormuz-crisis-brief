@@ -389,10 +389,10 @@ function createMarker(locKey, color, size = 2, label = null) {
   dot.userData = { type: 'marker', locKey, label };
   group.add(dot);
 
-  // Ring for choke points
+  // Ring for choke points — static, subtle
   if (label) {
-    const ringGeo = new THREE.RingGeometry(size * 2, size * 2.5, 32);
-    const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+    const ringGeo = new THREE.RingGeometry(size * 1.8, size * 2.2, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.position.copy(pos);
     ring.lookAt(0, 0, 0);
@@ -758,15 +758,7 @@ function animate() {
   controls.update();
   pulseT += 0.02;
 
-  // Pulse rings on choke point markers + threat zones
-  markerGroup.children.forEach(group => {
-    group.children.forEach(child => {
-      if (child.userData && child.userData.type === 'ring') {
-        child.scale.setScalar(1 + Math.sin(pulseT) * 0.2);
-        child.material.opacity = 0.3 + Math.sin(pulseT) * 0.2;
-      }
-    });
-  });
+  // Rings removed — were visual noise, not insight
 
   // Animate threat zone pulses
   redseaGroup.children.forEach(child => {
