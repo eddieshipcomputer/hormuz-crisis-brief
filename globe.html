@@ -188,7 +188,7 @@ const basePoints = [
 // ============================================================
 
 const world = Globe(document.getElementById('globeViz'), {
-  animateIn: true,
+  animateIn: false,
   rendererConfig: { antialias: true, alpha: true }
 })
   .backgroundColor('#000714')
@@ -198,8 +198,10 @@ const world = Globe(document.getElementById('globeViz'), {
   .atmosphereColor('#1a4060')
   .atmosphereAltitude(0.18);
 
-// Focus on Middle East
-world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 2000);
+// Focus on Iran / Hormuz immediately, no animate-in conflict
+world.onGlobeReady(() => {
+  world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 1500);
+});
 
 // ============================================================
 //  BASE POINTS — subtle location dots
