@@ -232,7 +232,11 @@
 
 <!-- Embedded 3D Globe -->
 <div style="width:100%;height:520px;margin:0;padding:0;position:relative;">
-  <iframe src="globe.html" style="width:100%;height:100%;border:none;" loading="lazy" title="3D Globe — Global Oil Flow Visualization"></iframe>
+  <iframe id="globe-frame" src="globe.html" style="width:100%;height:100%;border:none;" loading="lazy" title="3D Globe — Global Oil Flow Visualization"></iframe>
+  <script>
+    // Cache-bust the iframe so updates show immediately
+    document.getElementById('globe-frame').src = 'globe.html?v=' + Date.now();
+  </script>
 </div>
 
 <div class="container">
