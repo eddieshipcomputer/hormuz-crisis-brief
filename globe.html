@@ -69,12 +69,13 @@
   #tooltip .tt-val { color: #e94560; font-weight: bold; }
 
   #legend {
-    position: fixed; bottom: 80px; left: 20px; z-index: 10;
-    font-size: 9px; color: #2e5568; letter-spacing: 0.1em;
-    pointer-events: none;
+    position: fixed; bottom: 90px; left: 20px; z-index: 10;
+    font-size: 10px; color: #4a7080; letter-spacing: 0.08em;
+    pointer-events: none; line-height: 1.8;
   }
-  #legend .item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-  #legend .swatch { width: 18px; height: 3px; border-radius: 2px; }
+  #legend .item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  #legend .swatch { width: 22px; height: 3px; border-radius: 2px; }
+  #legend .icon { width: 22px; text-align: center; font-size: 12px; }
 
   #credit {
     position: fixed; bottom: 8px; right: 14px; z-index: 10;
@@ -121,11 +122,11 @@
 </div>
 
 <div id="legend">
-  <div class="item"><div class="swatch" style="background:#e94560"></div>Tanker Route (active)</div>
-  <div class="item"><div class="swatch" style="background:rgba(233,69,96,0.2)"></div>Tanker Route (disrupted)</div>
-  <div class="item"><div class="swatch" style="background:#4a90d9"></div>Pipeline bypass</div>
-  <div class="item"><div class="swatch" style="background:#f5a623"></div>Houthi threat zone</div>
-  <div class="item"><div class="swatch" style="background:#16c79a"></div>Reserve storage site</div>
+  <div class="item"><div class="icon">🚢</div><div class="swatch" style="background:#e94560"></div>Tanker Route</div>
+  <div class="item"><div class="icon">⚡</div><div class="swatch" style="background:rgba(233,69,96,0.2);border:1px dashed #661122"></div>Disrupted Route</div>
+  <div class="item"><div class="icon">Pipeline</div><div class="swatch" style="background:#4a90d9"></div>Pipeline Bypass</div>
+  <div class="item"><div class="icon">⚠</div><div class="swatch" style="background:#f5a623"></div>Threat Zone</div>
+  <div class="item"><div class="icon">●</div><div class="swatch" style="background:#16c79a"></div>Reserve Site</div>
 </div>
 
 <div id="info-panel">
@@ -419,144 +420,240 @@ scene.add(redseaGroup);
 const reserveGroup = new THREE.Group();
 scene.add(reserveGroup);
 
-function createFlowArc(fromKey, toKey, color, flow, status = 'active', group = flowGroup) {
-  const curve = createArcCurve(fromKey, toKey, 0.35);
+// Create a sprite texture for ship/pipeline icons
+function createShipTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  // Ship shape — elongated diamond pointing right
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(48, 32); // bow
+  ctx.lineTo(40, 22);
+  ctx.lineTo(8, 26);
+  ctx.lineTo(8, 38);
+  ctx.lineTo(40, 42);
+  ctx.closePath();
+  ctx.fill();
+  // Bridge
+  ctx.fillStyle = '#cccccc';
+  ctx.fillRect(28, 28, 8, 8);
+  return new THREE.CanvasTexture(canvas);
+}
+
+const shipTexture = createShipTexture();
+
+function createFlowArc(fromKey, toKey, color, flow, status = 'active', group = flowGroup, routeType = 'tanker') {
+  const arcHeight = routeType === 'pipeline' ? 0.08 : 0.3 + Math.min(0.3, flow * 0.05);
+  const curve = createArcCurve(fromKey, toKey, arcHeight);
 
   if (status === 'disrupted') {
-    // Faint dashed line for disrupted routes
+    // Broken/dashed faint line
     const points = curve.getPoints(48);
     const geo = new THREE.BufferGeometry().setFromPoints(points);
     const mat = new THREE.LineDashedMaterial({
-      color: 0x553333, dashSize: 2, gapSize: 3,
-      transparent: true, opacity: 0.2
+      color: 0x661122, dashSize: 1.5, gapSize: 4,
+      transparent: true, opacity: 0.25
     });
     const line = new THREE.Line(geo, mat);
     line.computeLineDistances();
     line.userData = { type: 'flow', fromKey, toKey, flow, status };
     group.add(line);
+
+    // Skull marker on disrupted routes
+    const midPoint = curve.getPoint(0.5);
+    const skullGeo = new THREE.RingGeometry(1.5, 2.5, 16);
+    const skullMat = new THREE.MeshBasicMaterial({ color: 0x8B0000, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+    const skull = new THREE.Mesh(skullGeo, skullMat);
+    skull.position.copy(midPoint);
+    skull.lookAt(0, 0, 0);
+    skull.userData = { type: 'disrupted-marker' };
+    group.add(skull);
     return line;
   }
 
-  // Glowing tube along the arc path
-  const tubeRadius = Math.max(0.3, Math.min(1.8, flow * 0.45));
-  const tubeGeo = new THREE.TubeGeometry(curve, 64, tubeRadius, 8, false);
-  const tubeMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uTime: { value: 0 },
-      uColor: { value: new THREE.Color(color) },
-      uIntensity: { value: Math.min(1.0, 0.4 + flow * 0.15) },
-      uFlowSpeed: { value: 0.3 + flow * 0.08 },
-    },
-    vertexShader: `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform float uTime;
-      uniform vec3 uColor;
-      uniform float uIntensity;
-      uniform float uFlowSpeed;
-      varying vec2 vUv;
-      
-      void main() {
-        // Pulsing energy traveling along the tube length (uv.x = 0..1 along arc)
-        float pulse = fract(vUv.x * 2.0 - uTime * uFlowSpeed);
-        float energy = pow(pulse, 3.0);
-        
-        // Fade tube edges (radial)
-        float radial = 1.0 - abs(vUv.y - 0.5) * 2.0;
-        float core = smoothstep(0.0, 1.0, radial);
-        
-        // Base glow + energy pulse
-        vec3 col = uColor * (uIntensity * 0.3 + energy * 1.5);
-        float alpha = core * (uIntensity * 0.25 + energy * 0.7);
-        
-        gl_FragColor = vec4(col, alpha);
-      }
-    `,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
-  const tube = new THREE.Mesh(tubeGeo, tubeMat);
-  tube.userData = { type: 'flow', fromKey, toKey, flow, status, shaderMat: tubeMat };
-  group.add(tube);
+  // Base trail line — thin, colored by route type
+  const trailColor = routeType === 'pipeline' ? 0x4a90d9 : color;
+  const trailOpacity = routeType === 'pipeline' ? 0.35 : 0.2;
+  const trailPoints = curve.getPoints(80);
+  const trailGeo = new THREE.BufferGeometry().setFromPoints(trailPoints);
+  const trailMat = new THREE.LineBasicMaterial({ color: trailColor, transparent: true, opacity: trailOpacity });
+  const trailLine = new THREE.Line(trailGeo, trailMat);
+  trailLine.userData = { type: 'flow', fromKey, toKey, flow, status };
+  group.add(trailLine);
 
-  // Comet particles — bright head with fading trail
-  if (flow > 0) {
-    const particleCount = Math.min(5, Math.ceil(flow * 1.5));
-    for (let i = 0; i < particleCount; i++) {
-      const pSize = Math.max(0.8, Math.min(2.5, flow * 0.6));
-      const particleGeo = new THREE.SphereGeometry(pSize, 12, 12);
-      const particleMat = new THREE.MeshBasicMaterial({
+  // Glowing tube for volume encoding
+  if (routeType !== 'pipeline') {
+    const tubeRadius = Math.max(0.2, Math.min(1.2, flow * 0.3));
+    const tubeGeo = new THREE.TubeGeometry(curve, 64, tubeRadius, 6, false);
+    const tubeMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uColor: { value: new THREE.Color(color) },
+        uFlow: { value: flow },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uColor;
+        uniform float uFlow;
+        varying vec2 vUv;
+        void main() {
+          float speed = 0.2 + uFlow * 0.06;
+          float pulse = fract(vUv.x * 1.5 - uTime * speed);
+          float energy = pow(pulse, 4.0);
+          float radial = 1.0 - abs(vUv.y - 0.5) * 2.0;
+          float core = smoothstep(0.0, 1.0, radial);
+          vec3 col = uColor * (0.2 + energy * 2.0);
+          float alpha = core * (0.15 + energy * 0.6);
+          gl_FragColor = vec4(col, alpha);
+        }
+      `,
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const tube = new THREE.Mesh(tubeGeo, tubeMat);
+    tube.userData = { type: 'tube', shaderMat: tubeMat };
+    group.add(tube);
+  } else {
+    // Pipeline: animated dashes along the ground-hugging curve
+    const dashTubeRadius = Math.max(0.15, Math.min(0.8, flow * 0.2));
+    const tubeGeo = new THREE.TubeGeometry(curve, 64, dashTubeRadius, 6, false);
+    const tubeMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uColor: { value: new THREE.Color(0x4a90d9) },
+        uFlow: { value: flow },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uColor;
+        uniform float uFlow;
+        varying vec2 vUv;
+        void main() {
+          // Moving dashes along pipeline
+          float speed = 0.15 + uFlow * 0.04;
+          float dash = step(0.5, fract(vUv.x * 6.0 - uTime * speed));
+          float radial = 1.0 - abs(vUv.y - 0.5) * 2.0;
+          float core = smoothstep(0.3, 1.0, radial);
+          vec3 col = uColor * (0.4 + dash * 0.6);
+          float alpha = core * (0.2 + dash * 0.4);
+          gl_FragColor = vec4(col, alpha);
+        }
+      `,
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const tube = new THREE.Mesh(tubeGeo, tubeMat);
+    tube.userData = { type: 'tube', shaderMat: tubeMat };
+    group.add(tube);
+  }
+
+  // Moving ship icons for tanker routes
+  if (flow > 0 && routeType === 'tanker') {
+    const shipCount = Math.min(4, Math.max(1, Math.ceil(flow * 0.8)));
+    for (let i = 0; i < shipCount; i++) {
+      const shipMat = new THREE.SpriteMaterial({
+        map: shipTexture,
         color: color,
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.85,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       });
-      const particle = new THREE.Mesh(particleGeo, particleMat);
-      particle.userData = {
-        type: 'particle',
+      const ship = new THREE.Sprite(shipMat);
+      const shipScale = 2.5 + Math.min(3, flow * 0.5);
+      ship.scale.set(shipScale, shipScale * 0.6, 1);
+      ship.userData = {
+        type: 'ship',
         curve,
-        progress: i / particleCount,
-        speed: 0.0012 + flow * 0.0004,
-        baseSize: pSize,
+        progress: i / shipCount,
+        speed: 0.0008 + flow * 0.0003,
       };
-      group.add(particle);
-
-      // Glow halo
-      const haloGeo = new THREE.SphereGeometry(pSize * 2.5, 12, 12);
-      const haloMat = new THREE.MeshBasicMaterial({
-        color: color,
-        transparent: true,
-        opacity: 0.15,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      });
-      const halo = new THREE.Mesh(haloGeo, haloMat);
-      halo.userData = { type: 'halo', followParticle: particle };
-      group.add(halo);
+      group.add(ship);
     }
   }
 
-  return tube;
+  // Volume label at midpoint of arc
+  if (flow > 0) {
+    const midPoint = curve.getPoint(0.5);
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 256; labelCanvas.height = 64;
+    const lctx = labelCanvas.getContext('2d');
+    lctx.fillStyle = 'rgba(3,5,12,0.7)';
+    lctx.fillRect(0, 0, 256, 64);
+    lctx.strokeStyle = routeType === 'pipeline' ? '#4a90d9' : '#e94560';
+    lctx.lineWidth = 2;
+    lctx.strokeRect(1, 1, 254, 62);
+    lctx.fillStyle = routeType === 'pipeline' ? '#7ab8d8' : '#ff8899';
+    lctx.font = 'bold 28px monospace';
+    lctx.textAlign = 'center';
+    lctx.fillText(flow + 'M bpd', 128, 42);
+    const labelTex = new THREE.CanvasTexture(labelCanvas);
+    const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false });
+    const label = new THREE.Sprite(labelMat);
+    label.position.copy(midPoint);
+    label.scale.set(10, 2.5, 1);
+    label.userData = { type: 'vol-label' };
+    group.add(label);
+  }
+
+  return trailLine;
 }
 
-// Build tanker routes
+// Build tanker routes — arcs with ship icons
 TANKER_ROUTES.forEach(r => {
   const color = r.status === 'active' ? 0xe94560 : 0x551122;
-  createFlowArc(r.from, r.to, color, r.flow, r.status, flowGroup);
+  createFlowArc(r.from, r.to, color, r.flow, r.status, flowGroup, 'tanker');
 });
 
-// Build pipeline routes (surface lines, different style)
+// Build pipeline routes — ground-hugging dashed lines
 PIPELINE_ROUTES.forEach(r => {
-  if (r.planned) {
-    // Dashed line for planned
-    const curve = createArcCurve("basra", "yanbu", 0.15);
-    // skip drawing planned for now
-    return;
-  }
-  const color = r.label.includes("ADCOP") ? 0x4a90d9 : 0x2a6ab0;
-  createFlowArc(r.from, r.to, color, r.flow, 'active', pipelineGroup);
+  if (r.planned) return;
+  const color = r.label.includes("ADCOP") ? 0x3a7ad9 : 0x2a6ab0;
+  createFlowArc(r.from, r.to, color, r.flow, 'active', pipelineGroup, 'pipeline');
 });
 
-// Red Sea routes
+// Red Sea routes — amber, tanker style
 REDSEA_ROUTES.forEach(r => {
   if (r.status === 'threat') {
-    // Draw a threat circle
-    const pos = latLonToVec3(LOCATIONS[r.from].lat, LOCATIONS[r.from].lon);
-    const ringGeo = new THREE.RingGeometry(r.radius * 0.3, r.radius * 0.4, 32);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xf5a623, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
+    // Pulsing threat zone
+    const pos = latLonToVec3(LOCATIONS[r.from].lat, LOCATIONS[r.from].lon, RADIUS);
+    const threatGeo = new THREE.RingGeometry(r.radius * 0.25, r.radius * 0.45, 48);
+    const threatMat = new THREE.MeshBasicMaterial({
+      color: 0xf5a623, transparent: true, opacity: 0.08,
+      side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const ring = new THREE.Mesh(threatGeo, threatMat);
     ring.position.copy(pos);
     ring.lookAt(0, 0, 0);
+    ring.userData = { type: 'threat-pulse' };
     redseaGroup.add(ring);
+
+    // Inner warning ring
+    const innerGeo = new THREE.RingGeometry(r.radius * 0.08, r.radius * 0.12, 32);
+    const innerMat = new THREE.MeshBasicMaterial({
+      color: 0xff6600, transparent: true, opacity: 0.25,
+      side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const innerRing = new THREE.Mesh(innerGeo, innerMat);
+    innerRing.position.copy(pos);
+    innerRing.lookAt(0, 0, 0);
+    innerRing.userData = { type: 'threat-inner' };
+    redseaGroup.add(innerRing);
   } else {
-    createFlowArc(r.from, r.to, 0xf5a623, r.flow || 0.5, 'active', redseaGroup);
+    createFlowArc(r.from, r.to, 0xf5a623, r.flow || 0.5, 'active', redseaGroup, 'tanker');
   }
 });
 
@@ -661,7 +758,7 @@ function animate() {
   controls.update();
   pulseT += 0.02;
 
-  // Pulse rings on choke point markers
+  // Pulse rings on choke point markers + threat zones
   markerGroup.children.forEach(group => {
     group.children.forEach(child => {
       if (child.userData && child.userData.type === 'ring') {
@@ -671,29 +768,33 @@ function animate() {
     });
   });
 
-  // Update shader time uniforms for glowing tubes
+  // Animate threat zone pulses
+  redseaGroup.children.forEach(child => {
+    if (child.userData && child.userData.type === 'threat-pulse') {
+      child.scale.setScalar(0.8 + Math.sin(pulseT * 0.7) * 0.3);
+      child.material.opacity = 0.05 + Math.abs(Math.sin(pulseT * 0.7)) * 0.1;
+    }
+    if (child.userData && child.userData.type === 'threat-inner') {
+      child.scale.setScalar(0.9 + Math.sin(pulseT * 1.5) * 0.2);
+      child.material.opacity = 0.15 + Math.abs(Math.sin(pulseT * 1.5)) * 0.2;
+    }
+  });
+
+  // Update shader time uniforms and animate moving entities
   const allGroups = [flowGroup, pipelineGroup, redseaGroup];
   allGroups.forEach(group => {
     group.children.forEach(child => {
+      // Update shader time
       if (child.userData && child.userData.shaderMat) {
         child.userData.shaderMat.uniforms.uTime.value = pulseT;
       }
 
-      if (child.userData && child.userData.type === 'particle') {
+      // Animate ship sprites along arcs
+      if (child.userData && child.userData.type === 'ship') {
         child.userData.progress += child.userData.speed;
         if (child.userData.progress > 1) child.userData.progress = 0;
         const pos = child.userData.curve.getPoint(child.userData.progress);
         child.position.copy(pos);
-        
-        // Pulse the particle size slightly
-        const scale = 1 + Math.sin(pulseT * 3 + child.userData.progress * 6) * 0.15;
-        child.scale.setScalar(scale);
-      }
-      
-      // Halos follow their particles
-      if (child.userData && child.userData.type === 'halo') {
-        child.position.copy(child.userData.followParticle.position);
-        child.scale.setScalar(1 + Math.sin(pulseT * 2) * 0.1);
       }
     });
   });
