@@ -189,6 +189,7 @@ const basePoints = [
 
 const world = Globe(document.getElementById('globeViz'), {
   animateIn: false,
+  waitForGlobeReady: false,
   rendererConfig: { antialias: true, alpha: true }
 })
   .backgroundColor('#000714')
@@ -198,15 +199,12 @@ const world = Globe(document.getElementById('globeViz'), {
   .atmosphereColor('#1a4060')
   .atmosphereAltitude(0.18);
 
-// Focus on Iran / Hormuz after globe is ready
+// Focus on Iran / Hormuz
+world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 0);
+
+// Hide loader once globe is rendered
 world.onGlobeReady(() => {
   world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 1500);
-  // Hide loader
-  const loader = document.getElementById('loader');
-  if (loader) {
-    loader.style.opacity = 0;
-    setTimeout(() => { loader.style.display = 'none'; }, 600);
-  }
 });
 
 // ============================================================
@@ -392,7 +390,7 @@ setTimeout(() => {
     loader.style.opacity = 0;
     setTimeout(() => { loader.style.display = 'none'; }, 600);
   }
-}, 8000);
+}, 3500);
 </script>
 
 </body>
