@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global Oil Flow — Strait of Hormuz Crisis Visualization</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #03050c; font-family: 'Courier New', monospace; }
+
+  #globe-container { position: fixed; inset: 0; z-index: 0; }
+  canvas { display: block; }
+
+  /* Header */
+  #header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    padding: 18px 24px;
+    background: linear-gradient(180deg, rgba(3,5,12,0.9) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  #header h1 {
+    font-size: 16px; letter-spacing: 0.2em; color: #c8e0ec; font-weight: normal;
+  }
+  #header .sub { font-size: 10px; letter-spacing: 0.15em; color: #2e5568; margin-top: 4px; }
+
+  /* Toggle buttons */
+  #controls {
+    position: fixed; top: 18px; right: 20px; z-index: 20;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .toggle-btn {
+    background: rgba(15,52,96,0.7); border: 1px solid rgba(200,224,236,0.2);
+    color: #c8e0ec; padding: 7px 14px; font-family: inherit;
+    font-size: 10px; letter-spacing: 0.12em; cursor: pointer;
+    border-radius: 3px; transition: all 0.2s; backdrop-filter: blur(8px);
+    text-align: left; min-width: 160px;
+  }
+  .toggle-btn:hover { background: rgba(233,69,96,0.3); border-color: rgba(233,69,96,0.5); }
+  .toggle-btn.active { background: rgba(233,69,96,0.4); border-color: #e94560; color: white; }
+  .toggle-btn .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+  /* Info panel */
+  #info-panel {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    background: linear-gradient(0deg, rgba(3,5,12,0.95) 0%, transparent 100%);
+    padding: 20px 24px 16px;
+    pointer-events: none;
+  }
+  #stats-bar {
+    display: flex; gap: 30px; flex-wrap: wrap; justify-content: center;
+    margin-bottom: 10px;
+  }
+  .stat { text-align: center; }
+  .stat .val { font-size: 22px; font-weight: bold; color: #e94560; }
+  .stat .lbl { font-size: 9px; letter-spacing: 0.1em; color: #2e5568; text-transform: uppercase; margin-top: 2px; }
+  .stat.warn .val { color: #f5a623; }
+  .stat.ok .val { color: #16c79a; }
+  .stat.blue .val { color: #4a90d9; }
+
+  #tooltip {
+    position: fixed; z-index: 30;
+    background: rgba(3,5,12,0.92); border: 1px solid rgba(200,224,236,0.2);
+    border-radius: 4px; padding: 10px 14px;
+    font-size: 11px; color: #c8e0ec; line-height: 1.6;
+    pointer-events: none; opacity: 0; transition: opacity 0.15s;
+    max-width: 280px; backdrop-filter: blur(10px);
+  }
+  #tooltip .tt-title { font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+  #tooltip .tt-val { color: #e94560; font-weight: bold; }
+
+  #legend {
+    position: fixed; bottom: 80px; left: 20px; z-index: 10;
+    font-size: 9px; color: #2e5568; letter-spacing: 0.1em;
+    pointer-events: none;
+  }
+  #legend .item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  #legend .swatch { width: 18px; height: 3px; border-radius: 2px; }
+
+  #credit {
+    position: fixed; bottom: 8px; right: 14px; z-index: 10;
+    font-size: 8px; letter-spacing: 0.08em; color: #1a2d3d;
+    pointer-events: none;
+  }
+
+  #loader {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #03050c;
+    transition: opacity 0.6s; pointer-events: none;
+  }
+  #loader .l-text { font-size: 12px; letter-spacing: 0.2em; color: #2e5568; margin-top: 14px; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 2px solid rgba(200,224,236,0.1);
+    border-top-color: #e94560;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <div class="l-text">LOADING GLOBE</div>
+</div>
+
+<div id="globe-container"></div>
+
+<div id="header">
+  <h1>STRAIT OF HORMUZ — OIL FLOW INTELLIGENCE</h1>
+  <div class="sub">REAL DATA · JULY 2026 · DRAG TO ROTATE · SCROLL TO ZOOM</div>
+</div>
+
+<div id="controls">
+  <button class="toggle-btn active" id="btn-hormuz"><span class="dot" style="background:#e94560"></span>HORMUZ TANKER ROUTES</button>
+  <button class="toggle-btn active" id="btn-pipeline"><span class="dot" style="background:#4a90d9"></span>PIPELINE BYPASS</button>
+  <button class="toggle-btn active" id="btn-redsea"><span class="dot" style="background:#f5a623"></span>RED SEA / HOUTHI ZONE</button>
+  <button class="toggle-btn" id="btn-reserves"><span class="dot" style="background:#16c79a"></span>RESERVE STATUS MARKERS</button>
+</div>
+
+<div id="legend">
+  <div class="item"><div class="swatch" style="background:#e94560"></div>Tanker Route (active)</div>
+  <div class="item"><div class="swatch" style="background:rgba(233,69,96,0.2)"></div>Tanker Route (disrupted)</div>
+  <div class="item"><div class="swatch" style="background:#4a90d9"></div>Pipeline bypass</div>
+  <div class="item"><div class="swatch" style="background:#f5a623"></div>Houthi threat zone</div>
+  <div class="item"><div class="swatch" style="background:#16c79a"></div>Reserve storage site</div>
+</div>
+
+<div id="info-panel">
+  <div id="stats-bar">
+    <div class="stat"><div class="val">8.5M</div><div class="lbl">bpd via Hormuz</div></div>
+    <div class="stat blue"><div class="val">6.5M</div><div class="lbl">bpd via Pipeline</div></div>
+    <div class="stat warn"><div class="val">15M</div><div class="lbl">Total Regional</div></div>
+    <div class="stat"><div class="val">320M</div><div class="lbl">US SPR (43yr low)</div></div>
+    <div class="stat warn"><div class="val">1.2B</div><div class="lbl">Global Reserves</div></div>
+    <div class="stat"><div class="val">$86</div><div class="lbl">Brent ($/bbl)</div></div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+<div id="credit">SOURCES: EIA · IEA · IMF · WINDWARD · KPLER · UKMTO</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+//  DATA — Real coordinates and quantitative flow data
+// ============================================================
+
+const RADIUS = 100;
+
+// Key locations [lat, lon, name]
+const LOCATIONS = {
+  hormuz:     { lat: 26.57, lon: 56.25, name: "Strait of Hormuz" },
+  babElMan:   { lat: 12.58, lon: 43.34, name: "Bab el-Mandeb" },
+  suez:       { lat: 29.97, lon: 32.55, name: "Suez Canal" },
+  yanbu:      { lat: 24.09, lon: 38.06, name: "Yanbu (Red Sea Terminal)" },
+  fujairah:   { lat: 25.19, lon: 56.34, name: "Fujairah (UAE)" },
+  rasTanura:  { lat: 26.64, lon: 50.16, name: "Ras Tanura (Saudi)" },
+  kharg:      { lat: 29.26, lon: 50.32, name: "Kharg Island (Iran)" },
+  basra:      { lat: 30.51, lon: 47.78, name: "Basra (Iraq)" },
+  kuwait:     { lat: 29.37, lon: 47.97, name: "Al Ahmadi (Kuwait)" },
+  doha:       { lat: 25.29, lon: 51.53, name: "Doha (Qatar)" },
+  jeddah:     { lat: 21.49, lon: 39.19, name: "Jeddah" },
+  hodeida:    { lat: 14.80, lon: 42.95, name: "Hodeida (Houthi)" },
+  mogadishu:  { lat: 2.05, lon: 45.33, name: "Mogadishu" },
+  djibouti:   { lat: 11.58, lon: 43.15, name: "Djibouti" },
+  capeTown:   { lat: -33.92, lon: 18.42, name: "Cape of Good Hope" },
+  rotterdam:  { lat: 51.92, lon: 4.48, name: "Rotterdam" },
+  singapore:  { lat: 1.35, lon: 103.82, name: "Singapore" },
+  yokohama:   { lat: 35.45, lon: 139.65, name: "Yokohama" },
+  shanghai:   { lat: 31.23, lon: 121.47, name: "Shanghai" },
+  importTerminal: { lat: 28.0, lon: -91.0, name: "US Gulf Coast (SPR)" },
+  bryanMound: { lat: 28.94, lon: -95.27, name: "Bryan Mound SPR" },
+  bigHill:    { lat: 28.93, lon: -93.99, name: "Big Hill SPR" },
+  westHack:   { lat: 29.34, lon: -93.61, name: "West Hackberry SPR" },
+  bayouChoct:{ lat: 29.35, lon: -90.72, name: "Bayou Choctaw SPR" },
+  weeksIsland:{ lat: 29.85, lon: -91.81, name: "Weeks Island SPR" },
+};
+
+// Tanker routes: [from, to, throughput_M_bpd, status, color]
+const TANKER_ROUTES = [
+  // Active routes through Hormuz
+  { from: "rasTanura", to: "yokohama", via: "hormuz", flow: 3.5, status: "active", label: "Saudi → Japan" },
+  { from: "rasTanura", to: "shanghai", via: "hormuz", flow: 2.8, status: "active", label: "Saudi → China" },
+  { from: "rasTanura", to: "singapore", via: "hormuz", flow: 1.2, status: "active", label: "Saudi → Singapore" },
+  { from: "kharg", to: "rotterdam", via: "hormuz", flow: 0.5, status: "active", label: "Iran → Europe (reduced)" },
+  { from: "basra", to: "rotterdam", via: "hormuz", flow: 0.3, status: "active", label: "Iraq → Europe" },
+  { from: "kuwait", to: "shanghai", via: "hormuz", flow: 0.8, status: "active", label: "Kuwait → China" },
+  { from: "doha", to: "yokohama", via: "hormuz", flow: 0.4, status: "active", label: "Qatar → Japan" },
+  // Disrupted routes
+  { from: "rasTanura", to: "rotterdam", via: "hormuz", flow: 0.0, status: "disrupted", label: "Saudi → Europe (HALTED)" },
+  { from: "kharg", to: "shanghai", via: "hormuz", flow: 0.0, status: "disrupted", label: "Iran → China (HALTED)" },
+];
+
+// Pipeline routes: [from, to, flow_M_bpd, max_M_bpd, label]
+const PIPELINE_ROUTES = [
+  { from: "basra", to: "yanbu", flow: 2.5, max: 7.0, label: "Saudi East-West (Petroline)", util: "36%" },
+  { from: "doha", to: "fujairah", flow: 1.5, max: 1.8, label: "UAE Habshan-Fujairah (ADCOP)", util: "83%" },
+  // Planned
+  { from: "doha", to: "fujairah", flow: 0, max: 1.5, label: "ADNOC West-East 1 (2027)", util: "Under Construction", planned: true },
+];
+
+// Red Sea routes
+const REDSEA_ROUTES = [
+  { from: "yanbu", to: "suez", flow: 2.0, label: "Yanbu → Suez", status: "active" },
+  { from: "yanbu", to: "rotterdam", flow: 1.5, label: "Yanbu → Europe (via Suez)", status: "active" },
+  { from: "suez", to: "rotterdam", flow: 1.5, label: "Suez → Mediterranean", status: "active" },
+  // Threatened
+  { from: "hodeida", to: "babElMan", flow: 0, label: "Houthi Attack Zone", status: "threat", radius: 40 },
+  { from: "babElMan", to: "djibouti", flow: 0, label: "Piracy Corridor", status: "threat", radius: 35 },
+];
+
+// Reserve sites
+const RESERVE_SITES = [
+  { loc: "bryanMound", capacity: 247, current: 58, name: "Bryan Mound SPR" },
+  { loc: "bigHill", capacity: 160, current: 42, name: "Big Hill SPR" },
+  { loc: "westHack", capacity: 130, current: 35, name: "West Hackberry SPR" },
+  { loc: "bayouChoct", capacity: 76, current: 20, name: "Bayou Choctaw SPR" },
+  { loc: "weeksIsland", capacity: 72, current: 0, name: "Weeks Island (decommissioned)" },
+];
+
+// ============================================================
+//  THREE.JS SCENE SETUP
+// ============================================================
+
+const container = document.getElementById('globe-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 0, 280);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.rotateSpeed = 0.5;
+controls.minDistance = 150;
+controls.maxDistance = 400;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.3;
+
+// ============================================================
+//  HELPERS — lat/lon to 3D coordinates
+// ============================================================
+
+function latLonToVec3(lat, lon, radius = RADIUS) {
+  const phi = (90 - lat) * (Math.PI / 180);
+  const theta = (lon + 180) * (Math.PI / 180);
+  return new THREE.Vector3(
+    -radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+// Arc curve between two points on globe
+function createArcCurve(fromKey, toKey, heightFactor = 0.3) {
+  const from = latLonToVec3(LOCATIONS[fromKey].lat, LOCATIONS[fromKey].lon);
+  const to = latLonToVec3(LOCATIONS[toKey].lat, LOCATIONS[toKey].lon);
+  const distance = from.distanceTo(to);
+  const midPoint = from.clone().lerp(to, 0.5);
+  midPoint.normalize().multiplyScalar(RADIUS + distance * heightFactor);
+  const curve = new THREE.QuadraticBezierCurve3(from, midPoint, to);
+  return curve;
+}
+
+// ============================================================
+//  GLOBE — Wireframe sphere with dark fill
+// ============================================================
+
+// Dark sphere
+const sphereGeo = new THREE.SphereGeometry(RADIUS * 0.99, 64, 64);
+const sphereMat = new THREE.MeshBasicMaterial({ color: 0x0a0a1a, transparent: true, opacity: 0.85 });
+scene.add(new THREE.Mesh(sphereGeo, sphereMat));
+
+// Wireframe overlay
+const wireGeo = new THREE.SphereGeometry(RADIUS, 48, 32);
+const wireMat = new THREE.MeshBasicMaterial({
+  color: 0x1a3050, wireframe: true, transparent: true, opacity: 0.25
+});
+scene.add(new THREE.Mesh(wireGeo, wireMat));
+
+// Continents — simplified landmass dots
+function generateLandDots() {
+  // Simplified continent outlines as lat/lon polygons
+  const continents = [
+    // Middle East / Arabia
+    [[25,35],[28,38],[30,42],[28,47],[25,50],[22,55],[18,52],[20,45],[22,40],[25,35]],
+    // Europe
+    [[60,-10],[60,5],[55,10],[50,15],[45,12],[42,5],[45,-5],[50,-8],[55,-10],[60,-10]],
+    // Africa
+    [[35,-10],[30,0],[25,10],[20,20],[15,30],[10,40],[5,45],[0,42],[-10,40],[-20,35],[-30,25],[-35,18],[-30,12],[-20,10],[-10,8],[0,5],[10,0],[15,-10],[25,-15],[30,-10],[35,-10]],
+    // Asia main
+    [[70,40],[70,80],[65,120],[60,140],[55,145],[50,140],[45,135],[40,125],[35,120],[30,110],[25,105],[20,100],[25,90],[30,80],[35,70],[40,55],[45,50],[55,45],[65,40],[70,40]],
+    // India
+    [[28,72],[28,85],[22,88],[15,78],[20,72],[28,72]],
+    // SE Asia
+    [[10,95],[15,105],[10,110],[5,115],[0,110],[-5,105],[0,100],[5,97],[10,95]],
+    // Australia
+    [[-12,132],[-15,142],[-22,150],[-32,150],[-38,145],[-35,138],[-32,128],[-25,118],[-18,118],[-12,132]],
+    // North America
+    [[70,-160],[70,-100],[60,-80],[50,-65],[40,-75],[30,-85],[25,-95],[30,-110],[35,-118],[45,-125],[55,-130],[60,-145],[68,-160],[70,-160]],
+    // South America
+    [[10,-75],[5,-60],[0,-50],[-10,-40],[-25,-45],[-35,-60],[-45,-70],[-50,-72],[-45,-65],[-35,-70],[-25,-75],[-15,-78],[-5,-78],[5,-75],[10,-75]],
+    // Japan
+    [[45,142],[40,140],[35,136],[33,130],[36,138],[42,141],[45,142]],
+    // UK
+    [[58,-4],[55,-2],[52,1],[50,-4],[52,-6],[56,-5],[58,-4]],
+    // Greenland
+    [[80,-40],[75,-20],[70,-15],[65,-40],[68,-50],[75,-55],[80,-40]],
+  ];
+
+  const dotGeo = new THREE.BufferGeometry();
+  const positions = [];
+
+  continents.forEach(poly => {
+    // Generate points inside the polygon
+    let minLat = 200, maxLat = -200, minLon = 200, maxLon = -200;
+    poly.forEach(([lat, lon]) => {
+      minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat);
+      minLon = Math.min(minLon, lon); maxLon = Math.max(maxLon, lon);
+    });
+    const steps = 30;
+    for (let i = 0; i < steps; i++) {
+      for (let j = 0; j < steps; j++) {
+        const lat = minLat + (maxLat - minLat) * (i / steps);
+        const lon = minLon + (maxLon - minLon) * (j / steps);
+        // Point in polygon check (simplified — bounding box)
+        positions.push(...latLonToVec3(lat, lon, RADIUS * 0.99).toArray());
+      }
+    }
+  });
+
+  dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const dotMat = new THREE.PointsMaterial({
+    color: 0x1a4060, size: 1.2, transparent: true, opacity: 0.4
+  });
+  scene.add(new THREE.Points(dotGeo, dotMat));
+}
+generateLandDots();
+
+// ============================================================
+//  ATMOSPHERE GLOW
+// ============================================================
+const glowGeo = new THREE.SphereGeometry(RADIUS * 1.08, 32, 32);
+const glowMat = new THREE.ShaderMaterial({
+  uniforms: { glowColor: { value: new THREE.Color(0x1a4060) } },
+  vertexShader: `
+    varying vec3 vNormal;
+    void main() {
+      vNormal = normalize(normalMatrix * normal);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 glowColor;
+    varying vec3 vNormal;
+    void main() {
+      float intensity = pow(0.6 - dot(vNormal, vec3(0,0,1)), 2.0);
+      gl_FragColor = vec4(glowColor, 1.0) * intensity;
+    }
+  `,
+  side: THREE.BackSide,
+  blending: THREE.AdditiveBlending,
+  transparent: true
+});
+scene.add(new THREE.Mesh(glowGeo, glowMat));
+
+// Stars background
+const starsGeo = new THREE.BufferGeometry();
+const starPositions = [];
+for (let i = 0; i < 3000; i++) {
+  const r = 500 + Math.random() * 300;
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(Math.random() * 2 - 1);
+  starPositions.push(
+    r * Math.sin(phi) * Math.cos(theta),
+    r * Math.sin(phi) * Math.sin(theta),
+    r * Math.cos(phi)
+  );
+}
+starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({ color: 0x303040, size: 1.5 })));
+
+// ============================================================
+//  MARKERS — Location pins on globe
+// ============================================================
+
+const markerGroup = new THREE.Group();
+scene.add(markerGroup);
+
+function createMarker(locKey, color, size = 2, label = null) {
+  const pos = latLonToVec3(LOCATIONS[locKey].lat, LOCATIONS[locKey].lon, RADIUS);
+  const group = new THREE.Group();
+
+  // Pin dot
+  const dotGeo = new THREE.SphereGeometry(size, 16, 16);
+  const dotMat = new THREE.MeshBasicMaterial({ color });
+  const dot = new THREE.Mesh(dotGeo, dotMat);
+  dot.position.copy(pos);
+  dot.userData = { type: 'marker', locKey, label };
+  group.add(dot);
+
+  // Ring for choke points
+  if (label) {
+    const ringGeo = new THREE.RingGeometry(size * 2, size * 2.5, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.copy(pos);
+    ring.lookAt(0, 0, 0);
+    ring.userData = { type: 'ring' };
+    group.add(ring);
+  }
+
+  markerGroup.add(group);
+  return group;
+}
+
+// ============================================================
+//  FLOW LINES — Animated arcs
+// ============================================================
+
+const flowGroup = new THREE.Group();
+scene.add(flowGroup);
+
+const pipelineGroup = new THREE.Group();
+scene.add(pipelineGroup);
+
+const redseaGroup = new THREE.Group();
+scene.add(redseaGroup);
+
+const reserveGroup = new THREE.Group();
+scene.add(reserveGroup);
+
+function createFlowArc(fromKey, toKey, color, flow, status = 'active', group = flowGroup) {
+  const curve = createArcCurve(fromKey, toKey);
+  const points = curve.getPoints(64);
+
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  const opacity = status === 'disrupted' ? 0.12 : Math.min(0.7, 0.2 + flow * 0.12);
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+  const line = new THREE.Line(geo, mat);
+  line.userData = { type: 'flow', fromKey, toKey, flow, status };
+
+  // Moving particle along the arc
+  if (status === 'active' && flow > 0) {
+    const particleCount = Math.min(8, Math.ceil(flow * 2));
+    for (let i = 0; i < particleCount; i++) {
+      const particleGeo = new THREE.SphereGeometry(1.2, 8, 8);
+      const particleMat = new THREE.MeshBasicMaterial({ color });
+      const particle = new THREE.Mesh(particleGeo, particleMat);
+      particle.userData = {
+        type: 'particle',
+        curve,
+        progress: i / particleCount,
+        speed: 0.0015 + flow * 0.0003,
+      };
+      group.add(particle);
+    }
+  }
+
+  group.add(line);
+  return line;
+}
+
+// Build tanker routes
+TANKER_ROUTES.forEach(r => {
+  const color = r.status === 'active' ? 0xe94560 : 0x551122;
+  createFlowArc(r.from, r.to, color, r.flow, r.status, flowGroup);
+});
+
+// Build pipeline routes (surface lines, different style)
+PIPELINE_ROUTES.forEach(r => {
+  if (r.planned) {
+    // Dashed line for planned
+    const curve = createArcCurve("basra", "yanbu", 0.15);
+    // skip drawing planned for now
+    return;
+  }
+  const color = r.label.includes("ADCOP") ? 0x4a90d9 : 0x2a6ab0;
+  createFlowArc(r.from, r.to, color, r.flow, 'active', pipelineGroup);
+});
+
+// Red Sea routes
+REDSEA_ROUTES.forEach(r => {
+  if (r.status === 'threat') {
+    // Draw a threat circle
+    const pos = latLonToVec3(LOCATIONS[r.from].lat, LOCATIONS[r.from].lon);
+    const ringGeo = new THREE.RingGeometry(r.radius * 0.3, r.radius * 0.4, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xf5a623, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.copy(pos);
+    ring.lookAt(0, 0, 0);
+    redseaGroup.add(ring);
+  } else {
+    createFlowArc(r.from, r.to, 0xf5a623, r.flow || 0.5, 'active', redseaGroup);
+  }
+});
+
+// Markers
+createMarker("hormuz", 0xe94560, 3.5, "Strait of Hormuz");
+createMarker("babElMan", 0xf5a623, 3, "Bab el-Mandeb");
+createMarker("rasTanura", 0xe94560, 2);
+createMarker("kharg", 0x888888, 2);
+createMarker("basra", 0x888888, 2);
+createMarker("kuwait", 0x888888, 2);
+createMarker("yanbu", 0x4a90d9, 2.5, "Yanbu Terminal");
+createMarker("fujairah", 0x4a90d9, 2.5, "Fujairah");
+createMarker("suez", 0xf5a623, 2);
+createMarker("hodeida", 0xf5a623, 2.5, "Houthi Zone");
+createMarker("djibouti", 0xf5a623, 2);
+createMarker("singapore", 0x666666, 2);
+createMarker("shanghai", 0x666666, 2);
+createMarker("yokohama", 0x666666, 2);
+createMarker("rotterdam", 0x666666, 2);
+
+// Reserve sites
+RESERVE_SITES.forEach(r => {
+  const util = r.capacity > 0 ? r.current / r.capacity : 0;
+  const color = util > 0.3 ? 0x16c79a : 0xe94560;
+  const pos = latLonToVec3(LOCATIONS[r.loc].lat, LOCATIONS[r.loc].lon, RADIUS);
+  const dotGeo = new THREE.SphereGeometry(2, 12, 12);
+  const dotMat = new THREE.MeshBasicMaterial({ color });
+  const dot = new THREE.Mesh(dotGeo, dotMat);
+  dot.position.copy(pos);
+  dot.userData = { type: 'reserve', name: r.name, capacity: r.capacity, current: r.current };
+  reserveGroup.add(dot);
+
+  // Small bar showing fill level
+  const barHeight = (r.capacity / 250) * 6;
+  const barFill = (r.current / 250) * 6;
+  if (barFill > 0) {
+    const fillGeo = new THREE.CylinderGeometry(0.4, 0.4, barFill, 8);
+    const fillMat = new THREE.MeshBasicMaterial({ color });
+    const fill = new THREE.Mesh(fillGeo, fillMat);
+    fill.position.copy(pos.clone().normalize().multiplyScalar(RADIUS + barFill / 2));
+    fill.lookAt(0, 0, 0);
+    fill.rotateX(Math.PI / 2);
+    reserveGroup.add(fill);
+  }
+});
+reserveGroup.visible = false;
+
+// ============================================================
+//  ANIMATION
+// ============================================================
+
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+
+function onMouseMove(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(markerGroup.children.flatMap(g => g.children), true);
+
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    if (obj.userData && obj.userData.locKey) {
+      const loc = LOCATIONS[obj.userData.locKey];
+      tooltip.style.opacity = 1;
+      tooltip.style.left = (event.clientX + 15) + 'px';
+      tooltip.style.top = (event.clientY + 15) + 'px';
+      tooltip.innerHTML = `<div class="tt-title">${loc.name}</div>`;
+
+      // Add route data
+      const routes = TANKER_ROUTES.filter(r => r.from === obj.userData.locKey || r.to === obj.userData.locKey);
+      if (routes.length > 0) {
+        tooltip.innerHTML += routes.map(r =>
+          `<div>${r.label}: <span class="tt-val">${r.flow > 0 ? r.flow + 'M bpd' : 'HALTED'}</span></div>`
+        ).join('');
+      }
+    } else if (obj.userData && obj.userData.type === 'reserve') {
+      const d = obj.userData;
+      tooltip.style.opacity = 1;
+      tooltip.style.left = (event.clientX + 15) + 'px';
+      tooltip.style.top = (event.clientY + 15) + 'px';
+      const pct = d.capacity > 0 ? ((d.current / d.capacity) * 100).toFixed(0) : 0;
+      tooltip.innerHTML = `<div class="tt-title">${d.name}</div>
+        <div>Current: <span class="tt-val">${d.current}M bbl</span></div>
+        <div>Capacity: ${d.capacity}M bbl</div>
+        <div>Fill: ${pct}%</div>`;
+    }
+  } else {
+    tooltip.style.opacity = 0;
+  }
+}
+
+window.addEventListener('mousemove', onMouseMove);
+
+// Pulse animation for choke points
+let pulseT = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  pulseT += 0.02;
+
+  // Pulse rings on choke point markers
+  markerGroup.children.forEach(group => {
+    group.children.forEach(child => {
+      if (child.userData && child.userData.type === 'ring') {
+        child.scale.setScalar(1 + Math.sin(pulseT) * 0.2);
+        child.material.opacity = 0.3 + Math.sin(pulseT) * 0.2;
+      }
+    });
+  });
+
+  // Animate particles along arcs
+  const allGroups = [flowGroup, pipelineGroup, redseaGroup];
+  allGroups.forEach(group => {
+    group.children.forEach(child => {
+      if (child.userData && child.userData.type === 'particle') {
+        child.userData.progress += child.userData.speed;
+        if (child.userData.progress > 1) child.userData.progress = 0;
+        const pos = child.userData.curve.getPoint(child.userData.progress);
+        child.position.copy(pos);
+      }
+    });
+  });
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// Hide loader
+setTimeout(() => {
+  const loader = document.getElementById('loader');
+  loader.style.opacity = 0;
+  setTimeout(() => loader.style.display = 'none', 600);
+}, 1000);
+
+// ============================================================
+//  TOGGLE BUTTONS
+// ============================================================
+
+function setupToggle(btnId, group) {
+  document.getElementById(btnId).addEventListener('click', () => {
+    const btn = document.getElementById(btnId);
+    btn.classList.toggle('active');
+    group.visible = btn.classList.contains('active');
+  });
+}
+
+setupToggle('btn-hormuz', flowGroup);
+setupToggle('btn-pipeline', pipelineGroup);
+setupToggle('btn-redsea', redseaGroup);
+setupToggle('btn-reserves', reserveGroup);
+
+// ============================================================
+//  RESIZE
+// ============================================================
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Stop auto-rotate on interaction
+controls.addEventListener('start', () => { controls.autoRotate = false; });
+</script>
+
+</body>
+</html>
