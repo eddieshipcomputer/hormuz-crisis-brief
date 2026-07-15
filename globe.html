@@ -206,17 +206,19 @@ world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 0);
 world.onGlobeReady(() => {
   world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 1500);
 
-  // Auto-rotate (guard in case controls() isn't available)
-  const controls = world.controls && world.controls();
-  if (controls) {
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.35;
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.addEventListener('start', () => {
-      controls.autoRotate = false;
-    });
-  }
+  // Auto-rotate (guarded)
+  try {
+    const controls = world.controls();
+    if (controls && controls.autoRotate !== undefined) {
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.35;
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.addEventListener('start', () => {
+        controls.autoRotate = false;
+      });
+    }
+  } catch(e) { /* controls not available */ }
 
   // Hide loader
   const loader = document.getElementById('loader');
