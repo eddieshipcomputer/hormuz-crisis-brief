@@ -576,26 +576,23 @@ function createFlowArc(fromKey, toKey, color, flow, status = 'active', group = f
     }
   }
 
-  // Volume label at midpoint of arc
+  // Volume label at midpoint of arc — small, clean
   if (flow > 0) {
     const midPoint = curve.getPoint(0.5);
     const labelCanvas = document.createElement('canvas');
-    labelCanvas.width = 256; labelCanvas.height = 64;
+    labelCanvas.width = 128; labelCanvas.height = 32;
     const lctx = labelCanvas.getContext('2d');
-    lctx.fillStyle = 'rgba(3,5,12,0.7)';
-    lctx.fillRect(0, 0, 256, 64);
-    lctx.strokeStyle = routeType === 'pipeline' ? '#4a90d9' : '#e94560';
-    lctx.lineWidth = 2;
-    lctx.strokeRect(1, 1, 254, 62);
-    lctx.fillStyle = routeType === 'pipeline' ? '#7ab8d8' : '#ff8899';
-    lctx.font = 'bold 28px monospace';
+    lctx.fillStyle = 'rgba(3,5,12,0.6)';
+    lctx.fillRect(0, 0, 128, 32);
+    lctx.fillStyle = routeType === 'pipeline' ? '#6aafef' : '#ff8899';
+    lctx.font = 'bold 16px monospace';
     lctx.textAlign = 'center';
-    lctx.fillText(flow + 'M bpd', 128, 42);
+    lctx.fillText(flow + 'M bpd', 64, 22);
     const labelTex = new THREE.CanvasTexture(labelCanvas);
-    const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false });
+    const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false, opacity: 0.8 });
     const label = new THREE.Sprite(labelMat);
     label.position.copy(midPoint);
-    label.scale.set(10, 2.5, 1);
+    label.scale.set(6, 1.5, 1);
     label.userData = { type: 'vol-label' };
     group.add(label);
   }
@@ -619,30 +616,17 @@ PIPELINE_ROUTES.forEach(r => {
 // Red Sea routes — amber, tanker style
 REDSEA_ROUTES.forEach(r => {
   if (r.status === 'threat') {
-    // Pulsing threat zone
+    // Simple subtle ground ring — no pulse, no animation
     const pos = latLonToVec3(LOCATIONS[r.from].lat, LOCATIONS[r.from].lon, RADIUS);
-    const threatGeo = new THREE.RingGeometry(r.radius * 0.25, r.radius * 0.45, 48);
-    const threatMat = new THREE.MeshBasicMaterial({
-      color: 0xf5a623, transparent: true, opacity: 0.08,
+    const ringGeo = new THREE.RingGeometry(2, 3, 32);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xf5a623, transparent: true, opacity: 0.15,
       side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
     });
-    const ring = new THREE.Mesh(threatGeo, threatMat);
+    const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.position.copy(pos);
     ring.lookAt(0, 0, 0);
-    ring.userData = { type: 'threat-pulse' };
     redseaGroup.add(ring);
-
-    // Inner warning ring
-    const innerGeo = new THREE.RingGeometry(r.radius * 0.08, r.radius * 0.12, 32);
-    const innerMat = new THREE.MeshBasicMaterial({
-      color: 0xff6600, transparent: true, opacity: 0.25,
-      side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
-    });
-    const innerRing = new THREE.Mesh(innerGeo, innerMat);
-    innerRing.position.copy(pos);
-    innerRing.lookAt(0, 0, 0);
-    innerRing.userData = { type: 'threat-inner' };
-    redseaGroup.add(innerRing);
   } else {
     createFlowArc(r.from, r.to, 0xf5a623, r.flow || 0.5, 'active', redseaGroup, 'tanker');
   }
@@ -751,15 +735,10 @@ function animate() {
 
   // Rings removed — were visual noise, not insight
 
-  // Animate threat zone pulses
+  // Animate threat zone — just slow opacity fade
   redseaGroup.children.forEach(child => {
     if (child.userData && child.userData.type === 'threat-pulse') {
-      child.scale.setScalar(0.8 + Math.sin(pulseT * 0.7) * 0.3);
-      child.material.opacity = 0.05 + Math.abs(Math.sin(pulseT * 0.7)) * 0.1;
-    }
-    if (child.userData && child.userData.type === 'threat-inner') {
-      child.scale.setScalar(0.9 + Math.sin(pulseT * 1.5) * 0.2);
-      child.material.opacity = 0.15 + Math.abs(Math.sin(pulseT * 1.5)) * 0.2;
+      child.material.opacity = 0.08 + Math.abs(Math.sin(pulseT * 0.3)) * 0.08;
     }
   });
 
