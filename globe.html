@@ -198,10 +198,18 @@ const world = Globe(document.getElementById('globeViz'), {
   .atmosphereColor('#1a4060')
   .atmosphereAltitude(0.18);
 
-// Focus on Iran / Hormuz immediately, no animate-in conflict
+// Focus on Iran / Hormuz — set immediately AND after globe ready
+world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 0);
 world.onGlobeReady(() => {
   world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 1500);
 });
+// Fallback: re-center after 3s in case onGlobeReady already fired
+setTimeout(() => {
+  const pov = world.pointOfView();
+  if (Math.abs(pov.lat - 28) > 5 || Math.abs(pov.lng - 53) > 5) {
+    world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 1000);
+  }
+}, 3000);
 
 // ============================================================
 //  BASE POINTS — subtle location dots
