@@ -202,9 +202,26 @@ const world = Globe(document.getElementById('globeViz'), {
 // Focus on Iran / Hormuz
 world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 0);
 
-// Hide loader once globe is rendered
+// Setup auto-rotate + loader hide after globe is ready
 world.onGlobeReady(() => {
   world.pointOfView({ lat: 28, lng: 53, altitude: 1.8 }, 1500);
+
+  // Auto-rotate
+  const controls = world.controls();
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.35;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.addEventListener('start', () => {
+    controls.autoRotate = false;
+  });
+
+  // Hide loader
+  const loader = document.getElementById('loader');
+  if (loader) {
+    loader.style.opacity = 0;
+    setTimeout(() => { loader.style.display = 'none'; }, 600);
+  }
 });
 
 // ============================================================
@@ -332,18 +349,6 @@ function refreshReserves() {
     });
 }
 refreshReserves();
-
-// ============================================================
-//  AUTO-ROTATE
-// ============================================================
-
-world.controls().autoRotate = true;
-world.controls().autoRotateSpeed = 0.35;
-world.controls().enableDamping = true;
-world.controls().dampingFactor = 0.08;
-world.controls().addEventListener('start', () => {
-  world.controls().autoRotate = false;
-});
 
 // ============================================================
 //  TOGGLES
