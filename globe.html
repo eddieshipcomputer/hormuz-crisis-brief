@@ -803,12 +803,17 @@ function getRichTooltip(locKey) {
 function showTooltip(x, y, html) {
   tooltip.innerHTML = html;
   tooltip.style.opacity = 1;
-  // Keep tooltip on screen
+  // Temporarily show to measure
+  tooltip.style.left = '0px';
+  tooltip.style.top = '0px';
   const rect = tooltip.getBoundingClientRect();
   let left = x + 15;
   let top = y + 15;
-  if (left + rect.width > window.innerWidth - 10) left = x - rect.width - 15;
-  if (top + rect.height > window.innerHeight - 10) top = y - rect.height - 15;
+  // Keep within viewport (important inside iframe)
+  if (left + rect.width > window.innerWidth - 10) left = Math.max(5, x - rect.width - 15);
+  if (top + rect.height > window.innerHeight - 10) top = Math.max(5, window.innerHeight - rect.height - 10);
+  if (top < 5) top = 5;
+  if (left < 5) left = 5;
   tooltip.style.left = left + 'px';
   tooltip.style.top = top + 'px';
 }
